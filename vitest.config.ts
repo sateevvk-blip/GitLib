@@ -5,8 +5,6 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     environment: 'node',
     pool: 'forks',
-    poolOptions: {
-      forks: { execArgv: ['--disable-warning=ExperimentalWarning'] },
-    },
+    execArgv: ['--disable-warning=ExperimentalWarning'],
   },
 });

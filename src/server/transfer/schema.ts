@@ -9,7 +9,7 @@ const GithubSchema = z
     htmlUrl: z.string().min(1),
     homepage: z.string().nullable().default(null),
     language: z.string().nullable().default(null),
-    languages: z.record(z.number()).default({}),
+    languages: z.record(z.string(), z.number()).default({}),
     topics: z.array(z.string()).default([]),
     stars: z.number().int().nonnegative().default(0),
     forks: z.number().int().nonnegative().default(0),

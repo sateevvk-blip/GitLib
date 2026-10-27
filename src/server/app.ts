@@ -120,11 +120,11 @@ export function buildApp(opts: AppOptions): AppContext {
       index: ['index.html'],
       wildcard: false,
       cacheControl: false,
-      setHeaders(res, filePath) {
+      setHeaders(reply, filePath) {
         // Хешированные ассеты кэшируются навсегда, index.html — никогда (иначе после пересборки
         // открытая вкладка будет просить старые файлы).
-        if (filePath.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-        else res.setHeader('Cache-Control', 'no-cache');
+        if (filePath.includes(`${path.sep}assets${path.sep}`)) reply.header('Cache-Control', 'public, max-age=31536000, immutable');
+        else reply.header('Cache-Control', 'no-cache');
       },
     });
     app.setNotFoundHandler((req, reply) => {
