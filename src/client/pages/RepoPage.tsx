@@ -61,10 +61,10 @@ export function RepoPage() {
     const status = repo.analysis.status;
     if (prevAnalysis.current === 'pending' && status === 'done') {
       release();
-      react('happy', phrases.analysisDone, 3500);
+      react('party', phrases.analysisDone, 3500);
     } else if (prevAnalysis.current === 'pending' && status === 'failed') {
       release();
-      react('sad', phrases.analysisFailed, 4500);
+      react('dizzy', phrases.analysisFailed, 4500);
     } else if (status === 'pending') {
       hold('thinking', phrases.analyzing[0]);
     }
@@ -99,14 +99,14 @@ export function RepoPage() {
   const busy = patch.isPending || refresh.isPending;
 
   const setStatus = (status: RepoStatus) =>
-    patch.mutate({ id: repo.id, patch: { status } }, { onSuccess: () => react('happy', phrases.statusChanged(STATUS_LABELS[status]), 2500), onError: (e) => toast('error', errorMessage(e)) });
+    patch.mutate({ id: repo.id, patch: { status } }, { onSuccess: () => react('wink', phrases.statusChanged(STATUS_LABELS[status]), 2500), onError: (e) => toast('error', errorMessage(e)) });
   const setFavorite = () => {
     const next = !repo.user.favorite;
-    patch.mutate({ id: repo.id, patch: { favorite: next } }, { onSuccess: () => react(next ? 'love' : 'idle', next ? phrases.favoriteOn : phrases.favoriteOff, 2500), onError: (e) => toast('error', errorMessage(e)) });
+    patch.mutate({ id: repo.id, patch: { favorite: next } }, { onSuccess: () => react(next ? 'love' : 'shy', next ? phrases.favoriteOn : phrases.favoriteOff, 2500), onError: (e) => toast('error', errorMessage(e)) });
   };
   const setTopics = (topics: string[]) => patch.mutate({ id: repo.id, patch: { topics } }, { onError: (e) => toast('error', errorMessage(e)) });
   const saveNotes = (notes: string) =>
-    patch.mutateAsync({ id: repo.id, patch: { notes } }).then(() => react('idle', phrases.noteSaved, 1800));
+    patch.mutateAsync({ id: repo.id, patch: { notes } }).then(() => react('shy', phrases.noteSaved, 2200));
 
   const doRefresh = () => {
     hold('thinking', 'Сверяюсь с GitHub…');
@@ -118,7 +118,7 @@ export function RepoPage() {
       },
       onError: (e) => {
         release();
-        react('sad', 'Не получилось обновить.', 3000);
+        react('sad', phrases.refreshFailed, 3000);
         toast('error', errorMessage(e));
       },
     });

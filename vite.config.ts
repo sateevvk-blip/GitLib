@@ -15,7 +15,11 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': `http://localhost:${port}`,
+      '/api': {
+        target: `http://localhost:${port}`,
+        // Модули клиента src/client/api/*.ts тоже начинаются с /api — их отдаёт Vite, а не сервер.
+        bypass: (req) => (/\.tsx?(\?|$)/.test(req.url ?? '') ? req.url : undefined),
+      },
       '/avatars': `http://localhost:${port}`,
     },
   },

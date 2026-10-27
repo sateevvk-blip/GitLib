@@ -22,7 +22,7 @@ export function App() {
           path="*"
           element={
             <main className="page">
-              <EmptyState mood="surprised" title="Такой страницы нет">
+              <EmptyState mood="search" title="Такой страницы нет">
                 <Link to="/" className="btn">
                   В библиотеку
                 </Link>

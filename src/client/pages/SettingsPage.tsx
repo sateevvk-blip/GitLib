@@ -7,6 +7,7 @@ import { useTheme, type ThemePreference } from '../lib/theme';
 import { toast, errorMessage } from '../lib/toast';
 import { plural } from '../lib/format';
 import { phrases, react, setAmbient } from '../mascot/store';
+import { MascotPicker } from '../mascot/MascotPicker';
 
 type Probe = { ok: boolean; message: string } | null;
 
@@ -44,7 +45,7 @@ export function SettingsPage() {
         onSuccess: () => {
           setGithubToken('');
           toast('success', 'Токен GitHub сохранён');
-          react('happy', phrases.settingsSaved, 2500);
+          react('wink', phrases.settingsSaved, 2500);
         },
         onError: (err) => toast('error', errorMessage(err)),
       },
@@ -59,7 +60,7 @@ export function SettingsPage() {
         onSuccess: () => {
           setLlmApiKey('');
           toast('success', 'Настройки LLM сохранены');
-          react('happy', phrases.settingsSaved, 2500);
+          react('wink', phrases.settingsSaved, 2500);
         },
         onError: (err) => toast('error', errorMessage(err)),
       },
@@ -72,8 +73,10 @@ export function SettingsPage() {
       const r = kind === 'github' ? await api.testGithub() : await api.testLlm();
       if (kind === 'github') setGithubProbe(r);
       else setLlmProbe(r);
+      react(r.ok ? 'happy' : 'sad', r.ok ? phrases.probeOk : phrases.probeFailed, 3000);
     } catch (err) {
       const p = { ok: false, message: errorMessage(err) };
+      react('sad', phrases.probeFailed, 3000);
       if (kind === 'github') setGithubProbe(p);
       else setLlmProbe(p);
     } finally {
@@ -87,6 +90,11 @@ export function SettingsPage() {
     <main className="page page-narrow">
       <div className="lib-head">
         <div>
+          <div className="sheet-label">
+            <b>Лист 03</b>
+            <span>·</span>
+            <span>интеграции и внешний вид</span>
+          </div>
           <h1 className="display lib-title">Настройки</h1>
           <div className="lib-sub">Интеграции, данные и внешний вид. Всё хранится локально.</div>
         </div>
@@ -188,6 +196,12 @@ export function SettingsPage() {
 
         <DataSection dataDir={s?.dataDir} dbPath={s?.dbPath} />
 
+        <section className="panel settings-section" id="mascot">
+          <h2>Маскот</h2>
+          <p className="lead">Напарник живёт в правом нижнем углу и комментирует происходящее. Выбор запоминается в этом браузере.</p>
+          <MascotPicker />
+        </section>
+
         <section className="panel settings-section">
           <h2>Внешний вид</h2>
           <p className="lead">Тема применяется сразу и запоминается в этом браузере.</p>
@@ -257,7 +271,7 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
             undefined,
             9000,
           );
-          react('happy', phrases.imported, 4000);
+          react('party', phrases.imported, 4000);
           reset();
         },
         onError: (err) => toast('error', errorMessage(err)),
@@ -278,7 +292,7 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
       </div>
       <hr className="divider" />
       <div className="row">
-        <a className="btn" href="/api/export" download onClick={() => react('happy', phrases.exported, 3500)}>
+        <a className="btn" href="/api/export" download onClick={() => react('cool', phrases.exported, 3500)}>
           <Download size={16} /> Экспорт библиотеки в JSON
         </a>
         <label className="btn" style={{ cursor: 'pointer' }}>

@@ -50,6 +50,11 @@ export function CollectionsPage() {
     <main className="page">
       <div className="lib-head">
         <div>
+          <div className="sheet-label">
+            <b>Лист 02</b>
+            <span>·</span>
+            <span>тематические полки</span>
+          </div>
           <h1 className="display lib-title">Коллекции</h1>
           <div className="lib-sub">Тематические полки: «инструменты для CLI», «идеи для пет-проекта», «посмотреть на выходных».</div>
         </div>

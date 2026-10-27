@@ -63,13 +63,14 @@ export function LibraryPage() {
     patch.mutate(
       { id: repo.id, patch: { favorite: next } },
       {
-        onSuccess: () => react(next ? 'love' : 'idle', next ? phrases.favoriteOn : phrases.favoriteOff, 2500),
+        onSuccess: () => react(next ? 'love' : 'shy', next ? phrases.favoriteOn : phrases.favoriteOff, 2500),
         onError: (e) => toast('error', errorMessage(e)),
       },
     );
   };
 
   const activeCollection = collections.data?.find((c) => c.id === query.collectionId);
+  const sheetDate = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   if (libraryEmpty) {
     return (
@@ -92,6 +93,13 @@ export function LibraryPage() {
       <main>
         <div className="lib-head">
           <div>
+            <div className="sheet-label">
+              <b>Лист 01</b>
+              <span>·</span>
+              <span>{activeCollection ? 'коллекция' : filtered ? 'выборка' : 'каталог'}</span>
+              <span>·</span>
+              <span>{sheetDate}</span>
+            </div>
             <h1 className="display lib-title">{activeCollection ? activeCollection.name : filtered ? 'Подборка' : 'Библиотека'}</h1>
             <div className="lib-sub">
               {repos.isSuccess && (
@@ -204,8 +212,8 @@ export function LibraryPage() {
 
         {items.length > 0 && (
           <div className={`grid ${view === 'list' ? 'is-list' : ''}`}>
-            {items.map((r) => (
-              <RepoCard key={r.id} repo={r} activeTopics={query.topics ?? []} onToggleFavorite={toggleFavorite} onTopicClick={(t) => toggleIn('topics', t)} />
+            {items.map((r, i) => (
+              <RepoCard key={r.id} repo={r} index={i} activeTopics={query.topics ?? []} onToggleFavorite={toggleFavorite} onTopicClick={(t) => toggleIn('topics', t)} />
             ))}
           </div>
         )}

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { Archive, GitFork, Heart, Star } from 'lucide-react';
 import type { RepoSummary } from '../../shared/types.js';
@@ -8,19 +9,24 @@ import { compactNumber, languageColor, relativeDate } from '../lib/format';
 
 interface Props {
   repo: RepoSummary;
+  /** Порядковый номер в списке — для нумерации карточек и задержки появления. */
+  index?: number;
   activeTopics: string[];
   onToggleFavorite: (repo: RepoSummary) => void;
   onTopicClick: (topic: string) => void;
 }
 
-export function RepoCard({ repo, activeTopics, onToggleFavorite, onTopicClick }: Props) {
+export function RepoCard({ repo, index = 0, activeTopics, onToggleFavorite, onTopicClick }: Props) {
   const summary = repo.analysis.status === 'done' ? repo.analysis.summary : null;
   const text = summary ?? repo.github.description;
   const topics = allTopics(repo).slice(0, 5);
   const active = new Set(activeTopics.map((t) => t.toLocaleLowerCase()));
 
   return (
-    <Link to={`/repo/${repo.id}`} className="card">
+    <Link to={`/repo/${repo.id}`} className="card" style={{ '--i': Math.min(index, 14) } as CSSProperties}>
+      <span className="card-index" aria-hidden="true">
+        № {String(index + 1).padStart(3, '0')}
+      </span>
       <div className="card-head">
         <Avatar avatarPath={repo.avatarPath} name={repo.owner} />
         <div className="card-title">

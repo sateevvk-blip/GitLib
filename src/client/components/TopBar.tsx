@@ -51,7 +51,7 @@ export function TopBar() {
   const toggleTheme = () => {
     const next = resolved === 'dark' ? 'light' : 'dark';
     setTheme(next);
-    react('surprised', next === 'dark' ? phrases.darkTheme : phrases.lightTheme, 2500);
+    react(next === 'dark' ? 'cool' : 'surprised', next === 'dark' ? phrases.darkTheme : phrases.lightTheme, 2500);
   };
 
   return (
@@ -60,6 +60,10 @@ export function TopBar() {
         <Link to="/" className="wordmark" aria-label="GitLib — на главную">
           <WordmarkCube />
           GitLib
+          <span className="wordmark-sub" aria-hidden="true">
+            <span>личная библиотека</span>
+            <span>репозиториев</span>
+          </span>
         </Link>
         <nav className="topnav" aria-label="Разделы">
           <NavLink to="/" end>

@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
-import { useAddRepo } from '../api/hooks';
+import { useAddRepo, useFacets } from '../api/hooks';
 import { ApiError } from '../api/client';
 import { useOnline } from '../lib/online';
 import { toast } from '../lib/toast';
-import { hold, phrases, react, release } from '../mascot/store';
+import { hold, isMilestone, phrases, pick, react, release } from '../mascot/store';
+import { CHARACTERS } from '../mascot/characters';
+import { getCharacter } from '../mascot/choice';
 
 interface Props {
   autoFocus?: boolean;
@@ -16,6 +18,7 @@ export function AddRepoForm({ autoFocus, compact }: Props) {
   const [value, setValue] = useState('');
   const [error, setError] = useState<{ text: string; repoId?: string } | null>(null);
   const add = useAddRepo();
+  const facets = useFacets();
   const navigate = useNavigate();
   const online = useOnline();
 
@@ -24,11 +27,13 @@ export function AddRepoForm({ autoFocus, compact }: Props) {
     const input = value.trim();
     if (!input || add.isPending) return;
     setError(null);
-    hold('thinking', phrases.reading[Math.floor(Math.random() * phrases.reading.length)]);
+    hold('thinking', phrases.reading);
     try {
       const repo = await add.mutateAsync(input);
       release();
-      react('happy', phrases.added(repo.name), 4500);
+      const total = (facets.data?.total ?? 0) + 1;
+      if (isMilestone(total)) react('party', phrases.milestone(total), 5000);
+      else react('happy', Math.random() < 0.3 ? CHARACTERS[getCharacter()].voice.cheer : phrases.added(repo.name), 4500);
       toast('success', `Добавлен ${repo.fullName}`);
       setValue('');
       navigate(`/repo/${repo.id}`);
@@ -37,7 +42,7 @@ export function AddRepoForm({ autoFocus, compact }: Props) {
       if (err instanceof ApiError && err.code === 'duplicate') {
         const repoId = typeof err.extra.repoId === 'string' ? err.extra.repoId : undefined;
         setError({ text: err.message, repoId });
-        react('surprised', phrases.duplicate, 3500);
+        react('laugh', phrases.duplicate, 3500);
         return;
       }
       const text = err instanceof Error ? err.message : 'Не удалось добавить репозиторий';
