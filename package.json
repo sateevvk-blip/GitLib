@@ -1,0 +1,49 @@
+{
+  "name": "gitlib",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GitLib — персональная библиотека GitHub-репозиториев",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n server,client -c blue,magenta \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:server": "tsx watch --clear-screen=false src/server/index.ts",
+    "dev:client": "vite",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:client": "vite build",
+    "start": "node --disable-warning=ExperimentalWarning dist/server/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@fastify/static": "^8.2.0",
+    "@fontsource-variable/fraunces": "^5.2.7",
+    "@fontsource-variable/jetbrains-mono": "^5.2.6",
+    "@fontsource-variable/manrope": "^5.2.6",
+    "@tanstack/react-query": "^5.90.2",
+    "dompurify": "^3.2.6",
+    "fastify": "^5.6.1",
+    "lucide-react": "^0.546.0",
+    "marked": "^16.3.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.6",
+    "@types/react": "^19.1.17",
+    "@types/react-dom": "^19.1.11",
+    "@vitejs/plugin-react": "^5.0.4",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
+  }
+}
