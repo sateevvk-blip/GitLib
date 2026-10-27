@@ -19,6 +19,8 @@ export interface FaceProps {
   mouthDx?: number;
   mouthDy?: number;
   browDy?: number;
+  /** Множитель прикрытия век (<1 — глаза шире открыты); полностью закрытый глаз остаётся закрытым. */
+  lidScale?: number;
 }
 
 function Mouth({ kind, x, y }: { kind: MouthKind; x: number; y: number }) {
@@ -104,11 +106,12 @@ function Eye({ ex, ey, r, lid, side, ids, e, mood, skinFill }: { ex: number; ey:
   );
 }
 
-export function Face({ mood, blink, ids, cx, cy, gap = 21, r = 10.5, skin, mouthDx = 2, mouthDy = 0, browDy = 0 }: FaceProps) {
+export function Face({ mood, blink, ids, cx, cy, gap = 21, r = 10.5, skin, mouthDx = 2, mouthDy = 0, browDy = 0, lidScale = 1 }: FaceProps) {
   const e = EXPR[mood];
   const closing = blink && e.blink;
-  const lidL = closing ? 1 : e.lidL;
-  const lidR = closing ? 1 : e.lidR;
+  const scaleLid = (v: number) => (v >= 1 ? 1 : v * lidScale);
+  const lidL = closing ? 1 : scaleLid(e.lidL);
+  const lidR = closing ? 1 : scaleLid(e.lidR);
   const skinFill = skin === 'cream' ? 'var(--mascot-cream)' : `url(#${ids}-ht)`;
   const lx = cx - gap / 2;
   const rx = cx + gap / 2;

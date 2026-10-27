@@ -2,12 +2,15 @@ import type { CharacterProps } from './parts';
 import { Banana } from './characters/Banana';
 import { Baller } from './characters/Baller';
 import { Globe } from './characters/Globe';
-import { Rabbit } from './characters/Rabbit';
+import { Cat } from './characters/Cat';
 import { Fish } from './characters/Fish';
-import { Bear } from './characters/Bear';
+import { Lemon } from './characters/Lemon';
 
-export const CHARACTER_IDS = ['banana', 'baller', 'globe', 'rabbit', 'fish', 'bear'] as const;
+export const CHARACTER_IDS = ['banana', 'baller', 'globe', 'cat', 'fish', 'lemon'] as const;
 export type CharacterId = (typeof CHARACTER_IDS)[number];
+
+/** Старые идентификаторы (до уточнения референса): «Мишка» оказался Лимоном, «Кролик» — Котом. */
+export const LEGACY_CHARACTER_IDS: Record<string, CharacterId> = { bear: 'lemon', rabbit: 'cat' };
 
 export interface Character {
   id: CharacterId;
@@ -69,17 +72,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       cheer: ['Отметил на карте.', 'Ещё одна точка на глобусе.'],
     },
   },
-  rabbit: {
-    id: 'rabbit',
-    name: 'Кролик',
-    tagline: 'Peace. Быстрый, ушастый, в курсе всего.',
-    Component: Rabbit,
+  cat: {
+    id: 'cat',
+    name: 'Кот',
+    tagline: 'Синий, ушастый, усатый. Всё слышит и всё видит.',
+    Component: Cat,
     voice: {
-      greeting: ['Кролик здесь. Peace!', 'Йо. Ушастый на посту.'],
-      tap: ['Peace!', 'Уши не трогать.', 'Быстрее меня только поиск по «/».', 'Чего?', 'Всё слышу. Уши же.'],
-      tickled: ['Уши! Я сказал — не трогать!', 'Ладно, ладно, сдаюсь.'],
-      wake: ['Одним ухом слушал, честно.', 'Проснулся. Где морковка?'],
-      cheer: ['Прыг — и в библиотеке.', 'Поймал. Peace.'],
+      greeting: ['Кот на месте. Мяу.', 'Йо. Усатый на посту.'],
+      tap: ['Мяу.', 'Уши не трогать.', 'Быстрее меня только поиск по «/».', 'Чего?', 'Всё слышу. Уши же.'],
+      tickled: ['Уши! Я сказал — не трогать!', 'Ладно, ладно, сдаюсь. Мур.'],
+      wake: ['Одним ухом слушал, честно.', 'Проснулся. Где миска?'],
+      cheer: ['Цап — и в библиотеке.', 'Поймал. Мур.'],
     },
   },
   fish: {
@@ -95,22 +98,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       cheer: ['Клюнуло! В садок.', 'Улов хороший.'],
     },
   },
-  bear: {
-    id: 'bear',
-    name: 'Мишка',
-    tagline: 'В кепке и с хитрой улыбкой. Уютный библиотекарь.',
-    Component: Bear,
+  lemon: {
+    id: 'lemon',
+    name: 'Лимон',
+    tagline: 'В кепке и с хитрой улыбкой. Кислый только с виду.',
+    Component: Lemon,
     voice: {
-      greeting: ['Мишка на месте. Устраивайся.', 'Привет! Кепку поправил — можно работать.'],
-      tap: ['Хе-хе.', 'Кепку не трогай.', 'Мёд не здесь, здесь код.', 'Ну чего, добавим что-нибудь?', 'Сижу, слушаю.'],
-      tickled: ['Р-р-р. Ну всё.', 'Кепка слетела!'],
-      wake: ['Это не спячка, это пауза.', 'М-м? Да, здесь.'],
-      cheer: ['Положил в берлогу.', 'Хорошая находка.'],
+      greeting: ['Лимон на месте. Устраивайся.', 'Привет! Кепку поправил — можно работать.'],
+      tap: ['Хе-хе.', 'Кепку не трогай.', 'Кислый? Это характер.', 'Ну чего, добавим что-нибудь?', 'Стою, слушаю.'],
+      tickled: ['Так, сок потечёт. Ну всё.', 'Кепка слетела!'],
+      wake: ['Это не сон, это пауза.', 'М-м? Да, здесь.'],
+      cheer: ['Положил на полку. Свежее.', 'Хорошая находка.'],
     },
   },
 };
 
-export const DEFAULT_CHARACTER: CharacterId = 'bear';
+export const DEFAULT_CHARACTER: CharacterId = 'lemon';
 
 export function isCharacterId(v: unknown): v is CharacterId {
   return typeof v === 'string' && (CHARACTER_IDS as readonly string[]).includes(v);

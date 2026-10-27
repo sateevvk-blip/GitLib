@@ -2518,7 +2518,7 @@ h3 {
 .mascot .m-ball,
 .mascot .m-flower,
 .mascot .m-ears,
-.mascot .m-peace,
+.mascot .m-wave,
 .mascot .m-tail,
 .mascot .m-cap,
 .mascot .m-arm {
@@ -2572,34 +2572,46 @@ h3 {
   }
 }
 
-/* Баскет: мяч */
+/* Баскет: мяч под мышкой */
 .mascot[data-mood='thinking'] .m-ball,
-.mascot[data-mood='search'] .m-ball,
-.mascot[data-mood='idle'] .m-ball {
-  animation: m-orbit 1.4s linear infinite;
-}
-.mascot[data-mood='idle'] .m-ball {
-  animation-duration: 4s;
+.mascot[data-mood='search'] .m-ball {
+  animation: m-orbit 2.4s linear infinite;
 }
 .mascot[data-mood='happy'] .m-ball,
 .mascot[data-mood='party'] .m-ball,
 .mascot[data-mood='wave'] .m-ball {
-  animation: m-bounce 0.6s ease-in-out infinite;
+  animation: m-dribble 0.6s ease-in-out infinite;
 }
-@keyframes m-bounce {
+@keyframes m-dribble {
   0%,
   100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-12px) rotate(60deg);
+    transform: translateY(44px) rotate(90deg);
   }
 }
 .mascot .m-ball.is-down {
-  transform: translate(-22px, 150px) scale(0.9);
+  transform: translate(2px, 48px);
 }
 .mascot[data-mood='dizzy'] .m-ball {
   animation: m-wobble 1.2s ease-in-out infinite;
+}
+
+/* Рука, которой персонаж машет (Лимон, Кот, Банан, Баскет) */
+.mascot[data-mood='happy'] .m-wave,
+.mascot[data-mood='wave'] .m-wave,
+.mascot[data-mood='party'] .m-wave {
+  animation: m-bob 0.7s ease-in-out infinite;
+}
+@keyframes m-bob {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-16deg);
+  }
 }
 
 /* Глобус: меридианы и цветок */
@@ -2629,7 +2641,7 @@ h3 {
   transform: rotate(30deg) scale(0.9);
 }
 
-/* Кролик: уши, peace, усы */
+/* Кот: уши и усы */
 .mascot[data-mood='surprised'] .m-ears,
 .mascot[data-mood='party'] .m-ears,
 .mascot[data-mood='happy'] .m-ears {
@@ -2641,7 +2653,7 @@ h3 {
 }
 .mascot[data-mood='search'] .m-ear-r,
 .mascot[data-mood='thinking'] .m-ear-r {
-  transform-origin: 96px 76px;
+  transform-origin: 100px 80px;
   animation: m-twitch 1.3s ease-in-out infinite;
 }
 @keyframes m-twitch {
@@ -2652,20 +2664,6 @@ h3 {
   }
   90% {
     transform: rotate(-8deg);
-  }
-}
-.mascot[data-mood='happy'] .m-peace,
-.mascot[data-mood='wave'] .m-peace,
-.mascot[data-mood='party'] .m-peace {
-  animation: m-bob 0.7s ease-in-out infinite;
-}
-@keyframes m-bob {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(-16deg);
   }
 }
 .mascot[data-mood='search'] .m-whiskers {
@@ -2702,7 +2700,7 @@ h3 {
   transform: rotate(14deg);
 }
 
-/* Мишка: кепка */
+/* Лимон: кепка */
 .mascot[data-mood='happy'] .m-cap,
 .mascot[data-mood='wave'] .m-cap,
 .mascot[data-mood='party'] .m-cap {

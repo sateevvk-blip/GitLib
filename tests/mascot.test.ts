@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EXPR, MOODS, MOOD_LABELS } from '../src/client/mascot/moods';
-import { CHARACTERS, CHARACTER_IDS, DEFAULT_CHARACTER, isCharacterId } from '../src/client/mascot/characters';
+import { CHARACTERS, CHARACTER_IDS, DEFAULT_CHARACTER, LEGACY_CHARACTER_IDS, isCharacterId } from '../src/client/mascot/characters';
 import { isMilestone, timeGreeting } from '../src/client/mascot/store';
 
 describe('маскот: настроения', () => {
@@ -53,6 +53,13 @@ describe('маскот: персонажи', () => {
     expect(isCharacterId('tom')).toBe(false);
     expect(isCharacterId(null)).toBe(false);
     expect(isCharacterId(42)).toBe(false);
+  });
+
+  it('старые идентификаторы «Мишки» и «Кролика» ведут к Лимону и Коту', () => {
+    expect(LEGACY_CHARACTER_IDS.bear).toBe('lemon');
+    expect(LEGACY_CHARACTER_IDS.rabbit).toBe('cat');
+    expect(isCharacterId('bear')).toBe(false);
+    for (const id of Object.values(LEGACY_CHARACTER_IDS)) expect(isCharacterId(id)).toBe(true);
   });
 });
 

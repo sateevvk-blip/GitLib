@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { DEFAULT_CHARACTER, isCharacterId, type CharacterId } from './characters';
+import { DEFAULT_CHARACTER, LEGACY_CHARACTER_IDS, isCharacterId, type CharacterId } from './characters';
 
 const KEY = 'gitlib.mascot';
 const listeners = new Set<() => void>();
@@ -11,7 +11,7 @@ function load(): void {
   loaded = true;
   try {
     const v = localStorage.getItem(KEY);
-    current = isCharacterId(v) ? v : null;
+    current = isCharacterId(v) ? v : (v && LEGACY_CHARACTER_IDS[v]) || null;
   } catch {
     current = null;
   }
