@@ -2512,209 +2512,29 @@ h3 {
   }
 }
 
-/* --- фирменные движения персонажей --- */
+/* --- смена позы стикера --- */
 
-.mascot .m-peel,
-.mascot .m-ball,
-.mascot .m-flower,
-.mascot .m-ears,
-.mascot .m-wave,
-.mascot .m-tail,
-.mascot .m-cap,
-.mascot .m-arm {
-  transition: transform 0.4s cubic-bezier(0.3, 1.3, 0.5, 1);
+.mascot .m-sprite {
+  transform-origin: 80px 178px;
+  animation: m-pose 0.32s cubic-bezier(0.3, 1.4, 0.5, 1);
 }
-
-/* Банан: кожура-руки */
-.mascot[data-mood='happy'] .m-peel-l,
-.mascot[data-mood='wave'] .m-peel-l,
-.mascot[data-mood='party'] .m-peel-l,
-.mascot[data-mood='surprised'] .m-peel-l {
-  transform: rotate(-28deg);
-}
-.mascot[data-mood='happy'] .m-peel-r,
-.mascot[data-mood='wave'] .m-peel-r,
-.mascot[data-mood='party'] .m-peel-r,
-.mascot[data-mood='surprised'] .m-peel-r {
-  transform: rotate(28deg);
-}
-.mascot[data-mood='sad'] .m-peel-l,
-.mascot[data-mood='sleep'] .m-peel-l {
-  transform: rotate(10deg);
-}
-.mascot[data-mood='sad'] .m-peel-r,
-.mascot[data-mood='sleep'] .m-peel-r {
-  transform: rotate(-10deg);
-}
-.mascot[data-mood='wave'] .m-peel-r,
-.mascot[data-mood='thinking'] .m-peel-r {
-  animation: m-flap 0.9s ease-in-out infinite;
-}
-@keyframes m-flap {
-  0%,
+@keyframes m-pose {
+  0% {
+    transform: scale(0.92) translateY(4px);
+    opacity: 0.6;
+  }
   100% {
-    transform: rotate(28deg);
-  }
-  50% {
-    transform: rotate(12deg);
+    transform: scale(1) translateY(0);
+    opacity: 1;
   }
 }
-.mascot[data-mood='thinking'] .m-peel-r {
-  animation-name: m-flap-small;
+.mascot[data-mood='sleep'] .m-sprite {
+  filter: saturate(0.7) brightness(0.96);
 }
-@keyframes m-flap-small {
-  0%,
-  100% {
-    transform: rotate(0deg);
+@media (prefers-reduced-motion: reduce) {
+  .mascot .m-sprite {
+    animation: none;
   }
-  50% {
-    transform: rotate(8deg);
-  }
-}
-
-/* Баскет: мяч под мышкой */
-.mascot[data-mood='thinking'] .m-ball,
-.mascot[data-mood='search'] .m-ball {
-  animation: m-orbit 2.4s linear infinite;
-}
-.mascot[data-mood='happy'] .m-ball,
-.mascot[data-mood='party'] .m-ball,
-.mascot[data-mood='wave'] .m-ball {
-  animation: m-dribble 0.6s ease-in-out infinite;
-}
-@keyframes m-dribble {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(44px) rotate(90deg);
-  }
-}
-.mascot .m-ball.is-down {
-  transform: translate(2px, 48px);
-}
-.mascot[data-mood='dizzy'] .m-ball {
-  animation: m-wobble 1.2s ease-in-out infinite;
-}
-
-/* Рука, которой персонаж машет (Лимон, Кот, Банан, Баскет) */
-.mascot[data-mood='happy'] .m-wave,
-.mascot[data-mood='wave'] .m-wave,
-.mascot[data-mood='party'] .m-wave {
-  animation: m-bob 0.7s ease-in-out infinite;
-}
-@keyframes m-bob {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(-16deg);
-  }
-}
-
-/* Глобус: меридианы и цветок */
-.mascot[data-mood='search'] .m-globe-lines,
-.mascot[data-mood='thinking'] .m-globe-lines,
-.mascot[data-mood='dizzy'] .m-globe-lines {
-  animation: m-turn 2.2s ease-in-out infinite;
-}
-.mascot[data-mood='dizzy'] .m-globe-lines {
-  animation-duration: 0.9s;
-}
-@keyframes m-turn {
-  0%,
-  100% {
-    transform: translateX(-8px);
-  }
-  50% {
-    transform: translateX(8px);
-  }
-}
-.mascot[data-mood='love'] .m-flower,
-.mascot[data-mood='happy'] .m-flower {
-  transform: rotate(-70deg) scale(1.25);
-}
-.mascot[data-mood='sad'] .m-flower,
-.mascot[data-mood='sleep'] .m-flower {
-  transform: rotate(30deg) scale(0.9);
-}
-
-/* Кот: уши и усы */
-.mascot[data-mood='surprised'] .m-ears,
-.mascot[data-mood='party'] .m-ears,
-.mascot[data-mood='happy'] .m-ears {
-  transform: scaleY(1.1) translateY(-3px);
-}
-.mascot[data-mood='sad'] .m-ears,
-.mascot[data-mood='sleep'] .m-ears {
-  transform: scaleY(0.85) translateY(6px) rotate(6deg);
-}
-.mascot[data-mood='search'] .m-ear-r,
-.mascot[data-mood='thinking'] .m-ear-r {
-  transform-origin: 100px 80px;
-  animation: m-twitch 1.3s ease-in-out infinite;
-}
-@keyframes m-twitch {
-  0%,
-  80%,
-  100% {
-    transform: rotate(0deg);
-  }
-  90% {
-    transform: rotate(-8deg);
-  }
-}
-.mascot[data-mood='search'] .m-whiskers {
-  animation: m-whisk 0.6s ease-in-out infinite;
-}
-@keyframes m-whisk {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  50% {
-    transform: rotate(-5deg);
-  }
-}
-
-/* Карась: хвост и плавник */
-.mascot[data-mood='happy'] .m-tail,
-.mascot[data-mood='love'] .m-tail,
-.mascot[data-mood='party'] .m-tail,
-.mascot[data-mood='wave'] .m-tail {
-  animation: m-wag 0.5s ease-in-out infinite;
-}
-@keyframes m-wag {
-  0%,
-  100% {
-    transform: rotate(-10deg);
-  }
-  50% {
-    transform: rotate(12deg);
-  }
-}
-.mascot[data-mood='sad'] .m-tail,
-.mascot[data-mood='sleep'] .m-tail {
-  transform: rotate(14deg);
-}
-
-/* Лимон: кепка */
-.mascot[data-mood='happy'] .m-cap,
-.mascot[data-mood='wave'] .m-cap,
-.mascot[data-mood='party'] .m-cap {
-  transform: rotate(-14deg) translateY(-4px);
-}
-.mascot[data-mood='surprised'] .m-cap {
-  transform: translateY(-8px);
-}
-.mascot[data-mood='sleep'] .m-cap,
-.mascot[data-mood='shy'] .m-cap {
-  transform: translateY(9px) rotate(-4deg);
-}
-.mascot[data-mood='cool'] .m-cap {
-  transform: rotate(8deg) translateX(4px);
 }
 
 /* --- выбор маскота в настройках --- */

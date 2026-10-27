@@ -1,30 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { EXPR, MOODS, MOOD_LABELS } from '../src/client/mascot/moods';
-import { CHARACTERS, CHARACTER_IDS, DEFAULT_CHARACTER, LEGACY_CHARACTER_IDS, isCharacterId } from '../src/client/mascot/characters';
+import { MOODS, MOOD_LABELS } from '../src/client/mascot/moods';
+import { CHARACTERS, CHARACTER_IDS, DEFAULT_CHARACTER, LEGACY_CHARACTER_IDS, POSE_FOR_MOOD, isCharacterId, spriteFor } from '../src/client/mascot/characters';
+import { SPRITES } from '../src/client/mascot/sprites/manifest';
 import { isMilestone, timeGreeting } from '../src/client/mascot/store';
 
 describe('маскот: настроения', () => {
-  it('у каждого настроения есть выражение лица и русская подпись', () => {
+  it('у каждого настроения есть русская подпись и поза', () => {
     for (const m of MOODS) {
-      expect(EXPR[m]).toBeDefined();
-      expect(EXPR[m].lidL).toBeGreaterThanOrEqual(0);
-      expect(EXPR[m].lidL).toBeLessThanOrEqual(1);
-      expect(EXPR[m].lidR).toBeGreaterThanOrEqual(0);
-      expect(EXPR[m].lidR).toBeLessThanOrEqual(1);
       expect(MOOD_LABELS[m]).toMatch(/[А-Яа-яЁё]/);
+      expect(POSE_FOR_MOOD[m]).toBeTruthy();
     }
-  });
-
-  it('во сне, при смехе и в очках персонаж не моргает', () => {
-    expect(EXPR.sleep.blink).toBe(false);
-    expect(EXPR.laugh.blink).toBe(false);
-    expect(EXPR.cool.blink).toBe(false);
-    expect(EXPR.wink.blink).toBe(false);
   });
 });
 
 describe('маскот: персонажи', () => {
-  it('ровно шесть персонажей из референса, у каждого — имя и свои реплики', () => {
+  it('ровно шесть персонажей из референса, у каждого — имя, реплики и спрайт', () => {
     expect(CHARACTER_IDS).toHaveLength(6);
     for (const id of CHARACTER_IDS) {
       const ch = CHARACTERS[id];
@@ -34,8 +24,26 @@ describe('маскот: персонажи', () => {
       for (const key of ['greeting', 'tap', 'tickled', 'wake', 'cheer'] as const) {
         expect(ch.voice[key].length, `${id}.voice.${key}`).toBeGreaterThan(0);
       }
-      expect(typeof ch.Component).toBe('function');
+      expect(Object.keys(SPRITES[id].poses).length, `${id}: спрайты`).toBeGreaterThan(0);
+      expect(SPRITES[id].scale).toBeGreaterThan(0);
     }
+  });
+
+  it('у персонажей с листом поз есть все шесть поз, у остальных — запасная на любое настроение', () => {
+    for (const id of ['lemon', 'cat', 'banana', 'baller'] as const) {
+      for (const pose of ['wave', 'thumbs', 'run', 'sit', 'think', 'cheer'] as const) {
+        expect(SPRITES[id].poses[pose], `${id}.${pose}`).toBeDefined();
+      }
+    }
+    for (const id of CHARACTER_IDS) {
+      for (const m of MOODS) {
+        const s = spriteFor(id, m);
+        expect(s.sprite.w).toBeGreaterThan(0);
+        expect(s.sprite.h).toBeGreaterThan(0);
+      }
+    }
+    expect(spriteFor('globe', 'wave').pose).toBe('idle');
+    expect(spriteFor('lemon', 'wave').pose).toBe('wave');
   });
 
   it('реплики персонажей не повторяются между персонажами', () => {

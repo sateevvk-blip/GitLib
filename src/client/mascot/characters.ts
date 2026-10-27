@@ -1,10 +1,5 @@
-import type { CharacterProps } from './parts';
-import { Banana } from './characters/Banana';
-import { Baller } from './characters/Baller';
-import { Globe } from './characters/Globe';
-import { Cat } from './characters/Cat';
-import { Fish } from './characters/Fish';
-import { Lemon } from './characters/Lemon';
+import type { Mood } from './moods';
+import { SPRITES, type Pose, type Sprite } from './sprites/manifest';
 
 export const CHARACTER_IDS = ['banana', 'baller', 'globe', 'cat', 'fish', 'lemon'] as const;
 export type CharacterId = (typeof CHARACTER_IDS)[number];
@@ -17,7 +12,6 @@ export interface Character {
   name: string;
   /** Короткая характеристика для карточки выбора. */
   tagline: string;
-  Component: (props: CharacterProps) => React.JSX.Element;
   voice: {
     /** Приветствие при выборе и при первом открытии за сессию. */
     greeting: readonly string[];
@@ -32,12 +26,42 @@ export interface Character {
   };
 }
 
+/** Какая поза из листа стикеров соответствует настроению. */
+export const POSE_FOR_MOOD: Record<Mood, Pose> = {
+  idle: 'thumbs',
+  thinking: 'think',
+  happy: 'cheer',
+  sad: 'sit',
+  search: 'run',
+  sleep: 'sit',
+  love: 'cheer',
+  surprised: 'wave',
+  wink: 'thumbs',
+  cool: 'thumbs',
+  grumpy: 'sit',
+  shy: 'think',
+  laugh: 'cheer',
+  dizzy: 'sit',
+  wave: 'wave',
+  party: 'cheer',
+};
+
+/** Спрайт персонажа для настроения; если у персонажа одна поза — она на все случаи. */
+export function spriteFor(id: CharacterId, mood: Mood): { pose: Pose | 'idle'; sprite: Sprite; scale: number } {
+  const set = SPRITES[id];
+  const wanted = POSE_FOR_MOOD[mood];
+  const fromPose = set.poses[wanted];
+  if (fromPose) return { pose: wanted, sprite: fromPose, scale: set.scale };
+  const idle = set.poses.idle ?? Object.values(set.poses)[0];
+  if (!idle) throw new Error(`Нет спрайтов для персонажа ${id}`);
+  return { pose: 'idle', sprite: idle, scale: set.scale };
+}
+
 export const CHARACTERS: Record<CharacterId, Character> = {
   banana: {
     id: 'banana',
     name: 'Банан',
     tagline: 'Невозмутимый. Никуда не спешит, но всё успевает.',
-    Component: Banana,
     voice: {
       greeting: ['Банан на связи. Спокойно, всё разложим по полкам.', 'Привет. Я Банан — не спешу, но всё успеваю.'],
       tap: ['Да-да, я здесь.', 'Не чисти меня, я ещё нужен.', 'Спокойно. Всё под контролем.', 'Можно без рук?', 'Я в кожуре, но в курсе.'],
@@ -49,10 +73,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   baller: {
     id: 'baller',
     name: 'Баскет',
-    tagline: 'Крутит мяч на пальце, пока ты читаешь README.',
-    Component: Baller,
+    tagline: 'С мячом под мышкой, пока ты читаешь README.',
     voice: {
-      greeting: ['Баскет в игре! Кидай ссылки — ловлю.', 'Привет! Мяч крутится, библиотека растёт.'],
+      greeting: ['Баскет в игре! Кидай ссылки — ловлю.', 'Привет! Мяч при мне, библиотека растёт.'],
       tap: ['Пас принят!', 'Не сбивай мяч!', 'Три очка за новый репозиторий.', 'Тайм-аут? Не, работаем.', 'Дриблинг по полкам.'],
       tickled: ['Фол! Мяч уронил.', 'Стоп-стоп, свисток!'],
       wake: ['Я на скамейке запасных сидел. Выхожу!', 'Мяч не упал — значит, не спал.'],
@@ -63,7 +86,6 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     id: 'globe',
     name: 'Глобус',
     tagline: 'Знает все репозитории мира. Ну почти.',
-    Component: Globe,
     voice: {
       greeting: ['Глобус. Покажу, где что лежит.', 'Привет. Все репозитории мира — на одной полке.'],
       tap: ['Не крути меня так.', 'Осторожно, это Северный полюс.', 'Ищешь что-то? Спроси.', 'На моей карте всё помечено.', 'Экватор щекотно.'],
@@ -76,7 +98,6 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     id: 'cat',
     name: 'Кот',
     tagline: 'Синий, ушастый, усатый. Всё слышит и всё видит.',
-    Component: Cat,
     voice: {
       greeting: ['Кот на месте. Мяу.', 'Йо. Усатый на посту.'],
       tap: ['Мяу.', 'Уши не трогать.', 'Быстрее меня только поиск по «/».', 'Чего?', 'Всё слышу. Уши же.'],
@@ -89,7 +110,6 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     id: 'fish',
     name: 'Карась',
     tagline: 'Серьёзный. Плавает по базе как по пруду.',
-    Component: Fish,
     voice: {
       greeting: ['Карась. Плаваю здесь. Вопросы?', 'Здесь я главный по базе. Поплыли.'],
       tap: ['Буль.', 'Не щекочи жабры.', 'Я не золотая рыбка, желания не исполняю.', 'Серьёзное лицо — серьёзная библиотека.', 'Плыву по делам.'],
@@ -102,7 +122,6 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     id: 'lemon',
     name: 'Лимон',
     tagline: 'В кепке и с хитрой улыбкой. Кислый только с виду.',
-    Component: Lemon,
     voice: {
       greeting: ['Лимон на месте. Устраивайся.', 'Привет! Кепку поправил — можно работать.'],
       tap: ['Хе-хе.', 'Кепку не трогай.', 'Кислый? Это характер.', 'Ну чего, добавим что-нибудь?', 'Стою, слушаю.'],

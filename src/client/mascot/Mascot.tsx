@@ -1,7 +1,6 @@
-import { useEffect, useId, useState } from 'react';
 import type { Mood } from './moods';
-import { EXPR, MOOD_LABELS } from './moods';
-import { CHARACTERS, type CharacterId } from './characters';
+import { MOOD_LABELS } from './moods';
+import { CHARACTERS, spriteFor, type CharacterId } from './characters';
 import { useCharacter } from './choice';
 
 interface Props {
@@ -14,34 +13,8 @@ interface Props {
 
 const INK = 'var(--mascot-ink)';
 
-function useBlink(mood: Mood): boolean {
-  const [blink, setBlink] = useState(false);
-  useEffect(() => {
-    if (!EXPR[mood].blink) return;
-    let alive = true;
-    let t: ReturnType<typeof setTimeout>;
-    const schedule = () => {
-      t = setTimeout(
-        () => {
-          if (!alive) return;
-          setBlink(true);
-          setTimeout(() => {
-            if (!alive) return;
-            setBlink(false);
-            schedule();
-          }, 130);
-        },
-        2800 + Math.random() * 3500,
-      );
-    };
-    schedule();
-    return () => {
-      alive = false;
-      clearTimeout(t);
-    };
-  }, [mood]);
-  return blink;
-}
+/** Линия пола в viewBox: к ней прижаты ноги персонажа. */
+const BASELINE = 178;
 
 /** Общий для всех персонажей реквизит вокруг головы: zzz, мысли, слёзы, искры, сердца, лупа, конфетти, звёздочки. */
 function Props_({ mood }: { mood: Mood }) {
@@ -131,31 +104,34 @@ function Props_({ mood }: { mood: Mood }) {
   }
 }
 
+/**
+ * Маскот — стикер из референса `маскот/`, вырезанный скриптом `scripts/mascot-sprites.mjs`.
+ * Поза берётся по настроению, реквизит и движения тела — общие для всех персонажей.
+ */
 export function Mascot({ mood, size = 120, className, character }: Props) {
   const chosen = useCharacter();
   const id = character ?? chosen;
   const ch = CHARACTERS[id];
-  const ids = `m${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
-  const blink = useBlink(mood);
+  const { pose, sprite, scale } = spriteFor(id, mood);
+  const w = sprite.w * scale;
+  const h = sprite.h * scale;
 
   return (
     <svg
       className={`mascot ${className ?? ''}`}
       data-mood={mood}
       data-character={id}
+      data-pose={pose}
       viewBox="0 0 160 190"
       width={size}
       height={(size * 190) / 160}
       role="img"
       aria-label={`${ch.name}: ${MOOD_LABELS[mood].toLowerCase()}`}
     >
-      <defs>
-        <pattern id={`${ids}-ht`} width="5" height="5" patternUnits="userSpaceOnUse">
-          <rect width="5" height="5" fill="var(--mascot-blue)" />
-          <circle cx="2.5" cy="2.5" r="1.15" fill="var(--mascot-blue-deep)" />
-        </pattern>
-      </defs>
-      <ch.Component mood={mood} blink={blink} ids={ids} />
+      <ellipse className="m-shadow" cx="80" cy={BASELINE + 3} rx={Math.min(54, w * 0.38)} ry="4.5" fill={INK} opacity="0.12" />
+      <g className="m-body">
+        <image key={pose} className="m-sprite" href={sprite.src} x={80 - w / 2} y={BASELINE - h} width={w} height={h} preserveAspectRatio="xMidYMax meet" />
+      </g>
       <Props_ mood={mood} />
     </svg>
   );
