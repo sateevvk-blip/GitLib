@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
-    "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.mjs"
+    "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.mjs",
+    "bundle": "node scripts/pack.mjs"
   },
   "dependencies": {
     "@fastify/static": "^10.1.7",
