@@ -3265,24 +3265,36 @@ h3 {
   opacity: 0.55;
 }
 
-/* Прохожий: стоит — ноги вместе; идёт — два кадра шага сменяют друг друга и фигура чуть покачивается */
-.intro-leg {
+/* Прохожий: стоит — ноги вместе, руки вдоль тела; идёт — два кадра шага (руки и ноги) сменяют друг друга,
+   фигура чуть покачивается. У статичных фигур рисуется только одна поза. */
+.intro-leg,
+.intro-arm {
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.2;
   stroke-linecap: round;
 }
-.intro-leg-a,
-.intro-leg-b {
+.intro-leg {
+  stroke-width: 2.4;
+}
+.intro-arm {
+  stroke-width: 1.7;
+}
+.intro-walker .intro-leg-a,
+.intro-walker .intro-leg-b,
+.intro-walker .intro-arm-a,
+.intro-walker .intro-arm-b {
   opacity: 0;
 }
-.intro-walker.is-walking .intro-leg-s {
+.intro-walker.is-walking .intro-leg-s,
+.intro-walker.is-walking .intro-arm-s {
   opacity: 0;
 }
-.intro-walker.is-walking .intro-leg-a {
+.intro-walker.is-walking .intro-leg-a,
+.intro-walker.is-walking .intro-arm-a {
   animation: intro-step 0.44s steps(1, end) infinite;
 }
-.intro-walker.is-walking .intro-leg-b {
+.intro-walker.is-walking .intro-leg-b,
+.intro-walker.is-walking .intro-arm-b {
   animation: intro-step 0.44s steps(1, end) infinite;
   animation-delay: -0.22s;
 }

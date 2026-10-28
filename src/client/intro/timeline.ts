@@ -4,22 +4,20 @@
  */
 import { TERRACE_Z } from './iso';
 
-export const INTRO_DURATION = 7800;
+export const INTRO_DURATION = 6300;
 
 /** Полоса, по которой подъезжает машина (улица перед террасой). */
 export const CAR_LANE_Y = 8.75;
-/** Машина останавливается напротив ворот. */
+/** Машина останавливается напротив ворот; ворота — напротив входной арки (ячейка x ∈ [0,1] левого фасада). */
 export const GATE_X = 0.55;
 export const CAR_START_X = 17;
 export const CAR_END_X = -16;
 /** Точка перед входной аркой и точка внутри неё. */
-export const ENTRANCE = { x: 4.75, y: 3.5 } as const;
-export const ENTRANCE_INSIDE_X = 4.05;
-/** Маршрут по террасе: от ворот, в обход угла здания, к входу. */
+export const ENTRANCE = { x: GATE_X, y: 4.75 } as const;
+export const ENTRANCE_INSIDE = { x: GATE_X, y: 4.1 } as const;
+/** Маршрут по террасе: от ворот прямо к входу. */
 export const INSIDE_PATH: readonly (readonly [number, number])[] = [
   [GATE_X, 6.75],
-  [1.3, 6.05],
-  [ENTRANCE.x, 5.0],
   [ENTRANCE.x, ENTRANCE.y],
 ];
 /** Выход из машины и подход к воротам. */
@@ -34,12 +32,12 @@ export const PHASES = {
   carIn: [300, 3000],
   exit: [3050, 3450],
   walkOut: [3450, 4000],
-  walkIn: [4000, 6900],
-  carOut: [4300, 6400],
-  enter: [6900, 7350],
-  light: [6300, 7100],
-  fade: [7250, INTRO_DURATION],
-  zoom: [0, 7400],
+  walkIn: [4000, 5100],
+  carOut: [4300, 6300],
+  enter: [5100, 5550],
+  light: [4600, 5300],
+  fade: [5700, INTRO_DURATION],
+  zoom: [0, 5900],
 } as const;
 
 export interface Actor {
@@ -92,6 +90,7 @@ const SEGMENTS: readonly Segment[] = (() => {
   return out;
 })();
 const PATH_LENGTH = SEGMENTS.reduce((sum, s) => sum + s.len, 0);
+const ENTRANCE_POINT: readonly [number, number] = [ENTRANCE.x, ENTRANCE.y];
 
 /** Точка на маршруте по террасе при равномерной скорости, p ∈ [0,1]. */
 export function alongInsidePath(p: number): readonly [number, number] {
@@ -104,7 +103,6 @@ export function alongInsidePath(p: number): readonly [number, number] {
   }
   return INSIDE_PATH[INSIDE_PATH.length - 1] ?? ENTRANCE_POINT;
 }
-const ENTRANCE_POINT: readonly [number, number] = [ENTRANCE.x, ENTRANCE.y];
 
 export function sceneAt(t: number): Frame {
   // Машина: подъезжает с замедлением, стоит, пока пассажир выходит, потом уезжает налево.
@@ -123,14 +121,21 @@ export function sceneAt(t: number): Frame {
     walkerOut = { x: OUTSIDE_CURB.x, y: lerp(OUTSIDE_CURB.y, OUTSIDE_TO.y, p), z: 0, visible: true, walking: true };
   }
 
-  // Пассажир на террасе: от ворот к входу, в арке растворяется.
+  // Пассажир на террасе: от ворот прямо к входу, в арке растворяется.
   let walkerIn: Frame['walkerIn'] = { x: ENTRANCE.x, y: ENTRANCE.y, z: TERRACE_Z, visible: false, walking: false, opacity: 1 };
   if (inside(t, PHASES.walkIn)) {
     const [x, y] = alongInsidePath(seg(t, PHASES.walkIn));
     walkerIn = { x, y, z: TERRACE_Z, visible: true, walking: true, opacity: 1 };
   } else if (inside(t, PHASES.enter)) {
     const p = seg(t, PHASES.enter);
-    walkerIn = { x: lerp(ENTRANCE.x, ENTRANCE_INSIDE_X, p), y: ENTRANCE.y, z: TERRACE_Z, visible: true, walking: true, opacity: 1 - easeInQuad(p) };
+    walkerIn = {
+      x: lerp(ENTRANCE.x, ENTRANCE_INSIDE.x, p),
+      y: lerp(ENTRANCE.y, ENTRANCE_INSIDE.y, p),
+      z: TERRACE_Z,
+      visible: true,
+      walking: true,
+      opacity: 1 - easeInQuad(p),
+    };
   }
 
   return {

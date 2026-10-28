@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BUILDING_N, buildingCells, faceMatrix, FLOORS, GATE, ORIGIN, project, projectRel, SIDE_DOOR, TERRACE, TERRACE_Z, U, VIEW } from '../src/client/intro/iso';
+import { BUILDING_N, buildingCells, faceMatrix, FLOORS, GATE, LIGHT, ORIGIN, project, projectRel, shadowHull, SIDE_DOOR, TERRACE, TERRACE_Z, U, VIEW } from '../src/client/intro/iso';
 import {
   alongInsidePath,
   CAR_LANE_Y,
   ENTRANCE,
-  ENTRANCE_INSIDE_X,
+  ENTRANCE_INSIDE,
   GATE_X,
   INSIDE_PATH,
   INTRO_DURATION,
@@ -46,7 +46,11 @@ describe('заставка: изометрия', () => {
     for (let i = 1; i < cells.length; i++) expect(cells[i].depth).toBeGreaterThanOrEqual(cells[i - 1].depth);
     const entrances = cells.filter((c) => c.entrance);
     expect(entrances).toHaveLength(1);
-    expect(entrances[0]).toMatchObject({ i: BUILDING_N - 1, j: BUILDING_N - 1, k: 0, archRight: true });
+    // Вход — в левом фасаде, в ячейке напротив ворот (x ∈ [0,1]), маршрут пассажира упирается в неё.
+    expect(entrances[0]).toMatchObject({ i: 0, j: BUILDING_N - 1, k: 0, archLeft: true });
+    expect(ENTRANCE.x).toBeGreaterThan(entrances[0]!.box.x0);
+    expect(ENTRANCE.x).toBeLessThan(entrances[0]!.box.x1);
+    expect(ENTRANCE.y).toBeGreaterThan(entrances[0]!.box.y1);
     for (const c of cells) {
       expect(c.box.z0).toBeCloseTo(TERRACE_Z + c.k);
       expect(c.box.x1).toBeGreaterThan(c.box.x0);
@@ -55,6 +59,20 @@ describe('заставка: изометрия', () => {
       if (c.archRight) expect(c.i).toBe(BUILDING_N - 1);
     }
     expect(cells.filter((c) => c.archLeft || c.archRight).length).toBeGreaterThan(10);
+  });
+
+  it('тень ложится только вперёд от объекта (по свету), не за него', () => {
+    const box = { x0: 1, y0: 2, x1: 3, y1: 5, z0: 0, z1: 1.5 };
+    const hull = shadowHull(box);
+    expect(hull).toHaveLength(6);
+    for (const [x, y, z] of hull) {
+      expect(x).toBeGreaterThanOrEqual(box.x0);
+      expect(y).toBeGreaterThanOrEqual(box.y0);
+      expect(z).toBe(box.z0);
+    }
+    expect(Math.max(...hull.map((p) => p[1]))).toBeCloseTo(box.y1 + LIGHT.y * 1.5);
+    expect(Math.max(...hull.map((p) => p[0]))).toBeCloseTo(box.x1 + LIGHT.x * 1.5);
+    expect(Math.max(...shadowHull(box, 3).map((p) => p[1]))).toBeCloseTo(box.y1 + LIGHT.y * 3);
   });
 
   it('ворота и калитка — в пределах парапета, здание — на террасе', () => {
@@ -108,14 +126,17 @@ describe('заставка: временная шкала', () => {
     expect(arrived.walkerIn.x).toBeCloseTo(ENTRANCE.x, 1);
     expect(arrived.walkerIn.y).toBeCloseTo(ENTRANCE.y, 1);
     const inside = sceneAt(PHASES.enter[1] - 1);
-    expect(inside.walkerIn.x).toBeCloseTo(ENTRANCE_INSIDE_X, 1);
+    expect(inside.walkerIn.x).toBeCloseTo(ENTRANCE_INSIDE.x, 1);
+    expect(inside.walkerIn.y).toBeCloseTo(ENTRANCE_INSIDE.y, 1);
     expect(inside.walkerIn.opacity).toBeLessThan(0.05);
     expect(inside.doorLight).toBe(1);
     expect(sceneAt(PHASES.enter[1]).walkerIn.visible).toBe(false);
   });
 
-  it('маршрут по террасе огибает угол здания и проходится равномерно', () => {
+  it('маршрут по террасе — прямой, от ворот к входу, не заходит в здание и проходится равномерно', () => {
     for (const [x, y] of INSIDE_PATH) expect(x < 0 || x > BUILDING_N + 0.3 || y > BUILDING_N + 0.3).toBe(true);
+    expect(INSIDE_PATH[0]![0]).toBeCloseTo(GATE_X);
+    expect(INSIDE_PATH[INSIDE_PATH.length - 1]![0]).toBeCloseTo(GATE_X);
     expect(alongInsidePath(0)).toEqual(INSIDE_PATH[0]);
     expect(alongInsidePath(1)).toEqual(INSIDE_PATH[INSIDE_PATH.length - 1]);
     // Доля пути — это доля длины ломаной: вершины достигаются ровно на своей доле, середина отрезка — на половине.

@@ -14,6 +14,14 @@ export const CAMERA_ORIGIN = { x: 0.5, y: 0.47 } as const;
 
 const C = Math.cos(Math.PI / 6);
 const S = 0.5;
+/** Косинус и синус угла изометрии — для матриц граней в сцене. */
+export const ISO = { c: C, s: S } as const;
+
+/**
+ * Свет сверху-справа-сзади: тень точки на высоте h ложится на землю со сдвигом (LIGHT.x·h, LIGHT.y·h),
+ * то есть вперёд-влево от здания на экране и никогда — за него.
+ */
+export const LIGHT = { x: 0.12, y: 0.55 } as const;
 
 export type P3 = readonly [number, number, number];
 export type P2 = readonly [number, number];
@@ -80,6 +88,24 @@ export function boxFaces(b: Box, rel = false): Faces {
 }
 
 /**
+ * Тень параллелепипеда на плоскости его основания: выпуклая оболочка основания и его сдвига по свету.
+ * `h` можно задать отдельно (например, терраса вместе с оградой).
+ */
+export function shadowHull(b: Box, h = b.z1 - b.z0): P3[] {
+  const dx = LIGHT.x * h;
+  const dy = LIGHT.y * h;
+  const z = b.z0;
+  return [
+    [b.x0, b.y0, z],
+    [b.x1, b.y0, z],
+    [b.x1 + dx, b.y0 + dy, z],
+    [b.x1 + dx, b.y1 + dy, z],
+    [b.x0 + dx, b.y1 + dy, z],
+    [b.x0, b.y1, z],
+  ];
+}
+
+/**
  * Матрица SVG, переводящая координаты грани (u — вдоль грани слева направо на экране, v — вверх, обе в [0,1])
  * в экран. Круг в этих координатах становится правильным эллипсом в плоскости грани — так рисуются арки.
  */
@@ -114,9 +140,9 @@ const UP: readonly (readonly number[])[] = [
   [0, 0.35, 0.35, 0],
 ];
 
-/** Левый фасад (y = 4): [i][k], i — слева направо на экране, k — этаж снизу вверх. */
+/** Левый фасад (y = 4): [i][k], i — слева направо на экране, k — этаж снизу вверх. Ячейка [0][0] — вход. */
 const LEFT: readonly (readonly FaceCell[])[] = [
-  [{ o: 0, a: true }, { o: 0.3, a: false }, { o: 0.3, a: true }, { o: 0, a: false }],
+  [{ o: 0.3, a: true }, { o: 0, a: false }, { o: 0.3, a: true }, { o: 0, a: false }],
   [{ o: 0.3, a: false }, { o: 0, a: true }, { o: 0, a: false }, { o: 0.3, a: true }],
   [{ o: 0, a: true }, { o: 0.3, a: false }, { o: 0, a: true }, { o: 0.3, a: false }],
   [{ o: 0.3, a: false }, { o: 0, a: true }, { o: 0.3, a: false }, { o: 0, a: false }],
@@ -127,7 +153,7 @@ const RIGHT: readonly (readonly FaceCell[])[] = [
   [{ o: 0, a: false }, { o: 0.3, a: true }, { o: 0, a: false }, { o: 0.3, a: true }],
   [{ o: 0.3, a: true }, { o: 0, a: false }, { o: 0.3, a: true }, { o: 0, a: false }],
   [{ o: 0, a: false }, { o: 0.3, a: true }, { o: 0, a: true }, { o: 0.3, a: false }],
-  [{ o: 0.3, a: true }, { o: 0, a: false }, { o: 0.3, a: true }, { o: 0, a: false }],
+  [{ o: 0.3, a: false }, { o: 0, a: false }, { o: 0.3, a: true }, { o: 0, a: false }],
 ];
 
 export interface Cell {
@@ -137,7 +163,7 @@ export interface Cell {
   box: Box;
   archLeft: boolean;
   archRight: boolean;
-  /** Вход в библиотеку — большая арка первого этажа в угловой колонне, правый фасад. */
+  /** Вход в библиотеку — большая арка первого этажа в левом фасаде, напротив ворот террасы. */
   entrance: boolean;
   depth: number;
 }
@@ -154,7 +180,7 @@ export function buildingCells(): Cell[] {
         if (!onLeft && !onRight && !onTop) continue;
         const l = onLeft ? LEFT[i]?.[k] : undefined;
         const r = onRight ? RIGHT[j]?.[k] : undefined;
-        const entrance = onLeft && onRight && k === 0;
+        const entrance = onLeft && i === 0 && k === 0;
         cells.push({
           i,
           j,
@@ -272,25 +298,29 @@ export const STREET_TREES: readonly TreeSpot[] = [
   [-2.9, 12.4],
 ];
 
+/** Кадр силуэта: стоит, шаг с разведёнными ногами, шаг со скрещёнными. */
+export type Pose = 's' | 'a' | 'b';
+
 export interface Figure {
   x: number;
   y: number;
   z?: number;
   child?: boolean;
+  pose?: Pose;
 }
-/** Прохожие на террасе. */
+/** Прохожие на террасе (левее маршрута пассажира x ≈ 0.55 их нет, чтобы не мешать). */
 export const PLAZA_PEOPLE: readonly Figure[] = [
-  { x: 0.6, y: 3.4, z: TERRACE_Z },
-  { x: 1.6, y: 5.3, z: TERRACE_Z },
-  { x: 1.95, y: 5.5, z: TERRACE_Z, child: true },
-  { x: 3.3, y: 6.1, z: TERRACE_Z },
+  { x: -0.6, y: 3.0, z: TERRACE_Z, pose: 'a' },
+  { x: 1.9, y: 5.3, z: TERRACE_Z },
+  { x: 2.25, y: 5.5, z: TERRACE_Z, child: true },
+  { x: 3.3, y: 6.1, z: TERRACE_Z, pose: 'b' },
   { x: 3.6, y: 6.0, z: TERRACE_Z, child: true },
 ];
 export const GARDEN_PEOPLE: readonly Figure[] = [
   { x: 9.6, y: 6.6, z: TERRACE_Z },
-  { x: 9.9, y: 6.7, z: TERRACE_Z, child: true },
+  { x: 9.9, y: 6.7, z: TERRACE_Z, child: true, pose: 'a' },
 ];
-export const STREET_PEOPLE: readonly Figure[] = [{ x: 12.2, y: 8.9 }];
+export const STREET_PEOPLE: readonly Figure[] = [{ x: 12.2, y: 8.9, pose: 'a' }];
 
 export interface ParkedCar {
   x: number;

@@ -16,23 +16,29 @@ import {
   GARDEN_PEOPLE,
   GARDEN_TREES,
   GATE,
+  GATE_TREE,
+  ISO,
   LANES,
   NEAR_BLOCKS,
   NEAR_CARS,
-  GATE_TREE,
-  STREET_TREES,
+  type P3,
   type ParkedCar,
   PLAZA_PEOPLE,
+  type Pose,
   project,
   projectRel,
   pts,
+  relPts,
   RIGHT_BLOCKS,
+  shadowHull,
   SIDE_DOOR,
   STREET_LABELS,
   STREET_PEOPLE,
+  STREET_TREES,
   TERRACE,
   TERRACE_Z,
   type TreeSpot,
+  U,
   VIEW,
   WALL_H,
   WALL_T,
@@ -43,25 +49,25 @@ const INK = '#2b49b8';
 const WHITE = { top: '#f7f6f3', left: '#e8e6e1', right: '#d9d6d0', line: '#c4c1ba' };
 const PLAZA = { top: '#f1f0ec', left: '#e3e1dc', right: '#d4d1cb' };
 const BLUE = { top: '#2d57d9', left: '#2449c8', right: '#1b3aa9', line: '#17339a' };
-const SHADOW = 'rgba(44, 48, 64, 0.13)';
+const SHADOW = 'rgba(44, 48, 64, 0.14)';
 const FIGURE = '#3453b6';
+const TREE = { dark: '#4a63b0', mid: '#5570bc', light: '#8ea0d6' };
+const CAR = { top: '#4a68cf', left: '#3453b8', right: '#2a449e', line: '#1b2f7a', glass: '#b9c6ee', glassDark: '#6f84c9', wheel: '#0f1d4d', rim: '#8a95ad', lamp: '#fff3c4' };
 
-function Shadow({ box }: { box: Box }) {
-  const h = box.z1 - box.z0;
-  const dx = -0.15 * h;
-  const dy = 0.55 * h;
-  const z = box.z0;
-  return (
-    <polygon
-      points={pts([
-        [box.x0 + dx, box.y0 + dy, z],
-        [box.x1 + dx, box.y0 + dy, z],
-        [box.x1 + dx, box.y1 + dy, z],
-        [box.x0 + dx, box.y1 + dy, z],
-      ])}
-      fill={SHADOW}
-    />
-  );
+const f1 = (n: number): string => (Math.round(n * 10) / 10).toString();
+
+/**
+ * Матрица для рисования в плоскости вертикальной грани относительно точки фигуры (единицы мира, v вверх).
+ * 'left' — плоскость y = const, u вдоль +x; 'right' — плоскость x = const, u вдоль −y.
+ */
+function planeMatrix(side: 'left' | 'right', origin: P3): string {
+  const [e, f] = projectRel(...origin);
+  return `matrix(${f1(ISO.c * U)} ${f1((side === 'left' ? ISO.s : -ISO.s) * U)} 0 ${-U} ${f1(e)} ${f1(f)})`;
+}
+
+/** Тень на плоскости основания: от источника света, только вперёд от объекта. */
+function Shadow({ box, h }: { box: Box; h?: number }) {
+  return <polygon points={pts(shadowHull(box, h))} fill={SHADOW} />;
 }
 
 function Court({ box, court }: { box: Box; court: NonNullable<Block['court']> }) {
@@ -130,38 +136,73 @@ function WhiteBox({ box, roof, palette = WHITE }: { box: Box; roof?: Block['roof
 function BlockShape({ b }: { b: Block }) {
   return (
     <g>
-      {b.box.z1 - b.box.z0 > TERRACE_Z && <Shadow box={b.box} />}
+      <Shadow box={b.box} />
       <WhiteBox box={b.box} roof={b.roof} palette={b.roof === 'dots' ? { ...WHITE, top: PLAZA.top } : WHITE} />
       {b.court && <Court box={b.box} court={b.court} />}
     </g>
   );
 }
 
-function Tree({ spot }: { spot: TreeSpot }) {
+/** Крона из пятен разной плотности, ствол с ветками — как штриховой силуэт на схеме. */
+const CANOPY: readonly (readonly [number, number, number, number])[] = [
+  [0, -21, 7, 0.82],
+  [-6.5, -17, 4.8, 0.78],
+  [6.8, -18, 5.2, 0.78],
+  [-3.2, -26.5, 4.6, 0.84],
+  [4.2, -26, 4.2, 0.84],
+  [0.4, -30.5, 3.3, 0.9],
+  [-8.6, -22, 3, 0.68],
+  [8.8, -23, 2.8, 0.68],
+  [-2.4, -13.5, 3.1, 0.72],
+  [3.4, -13, 2.7, 0.72],
+  [-5.5, -28, 2.2, 0.6],
+  [7.2, -28.5, 2, 0.6],
+];
+const CANOPY_LIGHTS: readonly (readonly [number, number, number])[] = [
+  [-2, -23, 1.5],
+  [4.4, -20, 1.2],
+  [-5.4, -19, 1],
+  [1.2, -28, 1.1],
+  [6.4, -25, 0.9],
+  [-1, -16, 0.9],
+  [7.5, -15.5, 0.8],
+];
+
+function Tree({ spot, scale = 1 }: { spot: TreeSpot; scale?: number }) {
   const [px, py] = project(spot[0], spot[1], spot[2] ?? 0);
   return (
-    <g transform={`translate(${px} ${py})`} fill="#5570bc">
-      <path d="M0 0V-14" stroke="#4a63b0" strokeWidth={1.6} />
-      <circle cy={-19} r={8} opacity={0.85} />
-      <circle cx={-6} cy={-14} r={5.5} opacity={0.8} />
-      <circle cx={6} cy={-15} r={6} opacity={0.8} />
-      <circle cx={1} cy={-25} r={4.5} opacity={0.9} />
-      <circle cx={-2} cy={-20} r={2.2} fill="#8ea0d6" opacity={0.8} />
-      <circle cx={5} cy={-22} r={1.6} fill="#8ea0d6" opacity={0.8} />
+    <g transform={`translate(${f1(px)} ${f1(py)}) scale(${scale})`}>
+      <ellipse cx={3} cy={1.5} rx={9} ry={3} fill={SHADOW} />
+      <path d="M0 0.5V-14M0-9.5L-4.6-15.5M0-11L4-17M0-12.5L-1.6-19M0-13L2-18.5" stroke={TREE.dark} strokeWidth={1.5} strokeLinecap="round" fill="none" />
+      {CANOPY.map(([x, y, r, o], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill={TREE.mid} opacity={o} />
+      ))}
+      {CANOPY_LIGHTS.map(([x, y, r], i) => (
+        <circle key={i} cx={x} cy={y} r={r} fill={TREE.light} opacity={0.85} />
+      ))}
     </g>
   );
 }
 
-/** Силуэт прохожего; у идущего ноги переключаются CSS-анимацией `.is-walking`. */
-function Person({ child = false, className }: { child?: boolean; className?: string }) {
+/**
+ * Силуэт человека ростом ≈24 px: голова, шея, торс с плечами, руки и ноги штрихами.
+ * У идущего (`walker`) кадры шага переключает CSS (`.is-walking`), у статичного рисуется одна поза.
+ */
+function Person({ child = false, pose = 's', walker = false, className }: { child?: boolean; pose?: Pose; walker?: boolean; className?: string }) {
+  const show = (p: Pose) => walker || p === pose;
   return (
-    <g className={className} fill={FIGURE} color={FIGURE} transform={child ? 'scale(0.62)' : undefined}>
+    <g className={className} fill={FIGURE} color={FIGURE} transform={child ? 'scale(0.6)' : undefined}>
+      <ellipse cx={1.5} cy={0.8} rx={4.5} ry={1.5} fill={SHADOW} />
       <g className="intro-walker-body">
-        <circle cy={-18} r={2.6} />
-        <path d="M-3-15.5H3L2.3-7.5H-2.3Z" />
-        <path className="intro-leg intro-leg-s" d="M-1.2-7.5V0M1.2-7.5V0" />
-        <path className="intro-leg intro-leg-a" d="M-1-7.5L-2.8 0M1-7.5L2.8 0" />
-        <path className="intro-leg intro-leg-b" d="M-1-7.5L0.5 0M1-7.5L-0.5 0" />
+        <circle cy={-21.2} r={2.5} />
+        <path d="M-1.1-19.3H1.1V-17.5H-1.1Z" />
+        <path d="M-3.4-17.6H3.4L2.5-8.6H-2.5Z" />
+        {show('s') && <path className="intro-arm intro-arm-s" d="M-3-16.4L-4.1-9.6M3-16.4L4.1-9.6" />}
+        {show('a') && <path className="intro-arm intro-arm-a" d="M-3-16.4L-5.8-11.4M3-16.4L4.8-10" />}
+        {show('b') && <path className="intro-arm intro-arm-b" d="M-3-16.4L-2.2-9.8M3-16.4L6-12.2" />}
+        {show('s') && <path className="intro-leg intro-leg-s" d="M-1.4-8.8V-0.3M1.4-8.8V-0.3" />}
+        {show('a') && <path className="intro-leg intro-leg-a" d="M-1.2-8.8L-3.9-0.3M1.2-8.8L3.5-0.3" />}
+        {show('b') && <path className="intro-leg intro-leg-b" d="M-1.2-8.8L0.9-0.3M1.2-8.8L-0.5-0.3" />}
       </g>
     </g>
   );
@@ -170,8 +211,8 @@ function Person({ child = false, className }: { child?: boolean; className?: str
 function StaticPerson({ f }: { f: Figure }) {
   const [px, py] = project(f.x, f.y, f.z ?? 0);
   return (
-    <g transform={`translate(${px} ${py})`}>
-      <Person child={f.child} />
+    <g transform={`translate(${f1(px)} ${f1(py)})`}>
+      <Person child={f.child} pose={f.pose} />
     </g>
   );
 }
@@ -179,37 +220,77 @@ function StaticPerson({ f }: { f: Figure }) {
 const along = (dir: 'x' | 'y', c0: number, c1: number, w0: number, w1: number, z0: number, z1: number): Box =>
   dir === 'x' ? { x0: c0, x1: c1, y0: w0, y1: w1, z0, z1 } : { y0: c0, y1: c1, x0: w0, x1: w1, z0, z1 };
 
-/** Машина относительно своей точки на дороге. */
+/**
+ * Машина относительно своей точки на дороге: кузов, кабина со стёклами и стойками, колёса с дисками
+ * в плоскости борта, фары на торце, тень по свету. `dir` — ось улицы.
+ */
 function CarBody({ dir, truck = false }: { dir: 'x' | 'y'; truck?: boolean }) {
-  const L = truck ? 1.25 : 0.95;
+  const L = truck ? 1.3 : 0.98;
   const W = 0.46;
-  const body = boxFaces(along(dir, -L / 2, L / 2, -W / 2, W / 2, 0.07, 0.36), true);
-  const cab = boxFaces(
-    truck ? along(dir, -L / 2 + 0.04, -L / 2 + 0.42, -W / 2 + 0.03, W / 2 - 0.03, 0.36, 0.64) : along(dir, -0.22, 0.24, -W / 2 + 0.04, W / 2 - 0.04, 0.36, 0.56),
-    true,
-  );
-  const cargo = truck ? boxFaces(along(dir, -L / 2 + 0.48, L / 2 - 0.02, -W / 2 + 0.01, W / 2 - 0.01, 0.36, 0.78), true) : null;
-  const wheelOffsets: [number, number][] = [L / 2 - 0.22, -(L / 2 - 0.22)].map((c) => (dir === 'x' ? [c, W / 2] : [W / 2, c]) as [number, number]);
+  const body = along(dir, -L / 2, L / 2, -W / 2, W / 2, 0.07, 0.34);
+  const cab = truck ? along(dir, -L / 2 + 0.04, -L / 2 + 0.44, -W / 2 + 0.03, W / 2 - 0.03, 0.34, 0.66) : along(dir, -0.24, 0.26, -W / 2 + 0.035, W / 2 - 0.035, 0.34, 0.56);
+  const cargo = truck ? along(dir, -L / 2 + 0.5, L / 2 - 0.02, -W / 2 + 0.01, W / 2 - 0.01, 0.34, 0.8) : null;
+  const bf = boxFaces(body, true);
+  const cf = boxFaces(cab, true);
+  const gf = cargo ? boxFaces(cargo, true) : null;
+  const cabL = dir === 'x' ? cab.x1 - cab.x0 : cab.y1 - cab.y0;
+  const cabW = dir === 'x' ? cab.y1 - cab.y0 : cab.x1 - cab.x0;
+  const cabH = cab.z1 - cab.z0;
+  // Борт (длинная грань) и торец (короткая) — какие плоскости видны, зависит от оси улицы.
+  const sideM = dir === 'x' ? planeMatrix('left', [body.x0, body.y1 + 0.004, 0]) : planeMatrix('right', [body.x1 + 0.004, body.y1, 0]);
+  const cabSideM = dir === 'x' ? planeMatrix('left', [cab.x0, cab.y1 + 0.004, cab.z0]) : planeMatrix('right', [cab.x1 + 0.004, cab.y1, cab.z0]);
+  const cabEndM = dir === 'x' ? planeMatrix('right', [cab.x1 + 0.004, cab.y1, cab.z0]) : planeMatrix('left', [cab.x0, cab.y1 + 0.004, cab.z0]);
+  const endM = dir === 'x' ? planeMatrix('right', [body.x1 + 0.004, body.y1, body.z0]) : planeMatrix('left', [body.x0, body.y1 + 0.004, body.z0]);
+  const wheels = [0.23, L - 0.23];
+  const outline = { fill: 'none', stroke: CAR.line, strokeWidth: 0.5, strokeOpacity: 0.55, strokeLinejoin: 'round' as const };
   return (
     <g>
-      <ellipse cx={-4} cy={6} rx={L * 24} ry={7} fill={SHADOW} />
-      <polygon points={body.left} fill="#3453b8" />
-      <polygon points={body.right} fill="#2a449e" />
-      <polygon points={body.top} fill="#4a68cf" />
-      <polygon points={cab.left} fill="#a7b7ea" />
-      <polygon points={cab.right} fill="#93a5de" />
-      <polygon points={cab.top} fill="#4a68cf" />
-      {cargo && (
+      <polygon points={relPts(shadowHull(body, 0.5))} fill={SHADOW} />
+      <polygon points={bf.left} fill={CAR.left} />
+      <polygon points={bf.right} fill={CAR.right} />
+      <polygon points={bf.top} fill={CAR.top} />
+      <polygon points={bf.left} {...outline} />
+      <polygon points={bf.right} {...outline} />
+      <polygon points={bf.top} {...outline} />
+      <polygon points={cf.left} fill={CAR.left} />
+      <polygon points={cf.right} fill={CAR.right} />
+      <polygon points={cf.top} fill={CAR.top} />
+      <polygon points={cf.top} {...outline} />
+      {/* стёкла: боковое с центральной стойкой и лобовое на торце кабины */}
+      <g transform={cabSideM}>
+        <rect x={0.035} y={0.04} width={cabL - 0.07} height={cabH - 0.08} fill={CAR.glass} />
+        <rect x={0.035} y={0.04} width={cabL - 0.07} height={(cabH - 0.08) * 0.45} fill={CAR.glassDark} opacity={0.55} />
+        <path d={`M${f1(cabL / 2)} 0.04V${f1(cabH - 0.04)}`} stroke={CAR.left} strokeWidth={0.025} />
+      </g>
+      <g transform={cabEndM}>
+        <rect x={0.035} y={0.05} width={cabW - 0.07} height={cabH - 0.09} fill={CAR.glass} />
+        <rect x={0.035} y={0.05} width={cabW - 0.07} height={(cabH - 0.09) * 0.4} fill={CAR.glassDark} opacity={0.5} />
+      </g>
+      {gf && (
         <>
-          <polygon points={cargo.left} fill="#2f4cae" />
-          <polygon points={cargo.right} fill="#243f96" />
-          <polygon points={cargo.top} fill="#4a68cf" />
+          <polygon points={gf.left} fill="#2f4cae" />
+          <polygon points={gf.right} fill="#243f96" />
+          <polygon points={gf.top} fill={CAR.top} />
+          <polygon points={gf.left} {...outline} />
+          <polygon points={gf.right} {...outline} />
+          <polygon points={gf.top} {...outline} />
         </>
       )}
-      {wheelOffsets.map(([x, y], i) => {
-        const [wx, wy] = projectRel(x, y, 0.1);
-        return <circle key={i} cx={wx} cy={wy} r={3.2} fill="#0f1d4d" />;
-      })}
+      {/* фары и бампер на видимом торце */}
+      <g transform={endM}>
+        <rect x={0.05} y={0.12} width={0.08} height={0.05} fill={CAR.lamp} />
+        <rect x={W - 0.13} y={0.12} width={0.08} height={0.05} fill={CAR.lamp} />
+        <rect x={0.02} y={0.01} width={W - 0.04} height={0.035} fill={CAR.line} opacity={0.5} />
+      </g>
+      {/* колёса в плоскости борта: эллипсы правильной формы для изометрии */}
+      <g transform={sideM}>
+        {wheels.map((u) => (
+          <g key={u}>
+            <circle cx={u} cy={0.115} r={0.105} fill={CAR.wheel} />
+            <circle cx={u} cy={0.115} r={0.05} fill={CAR.rim} />
+          </g>
+        ))}
+      </g>
     </g>
   );
 }
@@ -217,7 +298,7 @@ function CarBody({ dir, truck = false }: { dir: 'x' | 'y'; truck?: boolean }) {
 function ParkedCarShape({ c }: { c: ParkedCar }) {
   const [px, py] = project(c.x, c.y, 0);
   return (
-    <g transform={`translate(${px} ${py})`}>
+    <g transform={`translate(${f1(px)} ${f1(py)})`}>
       <CarBody dir={c.dir} truck={c.truck} />
     </g>
   );
@@ -251,19 +332,13 @@ function Arch({ box, side, id, entrance, lightRef }: { box: Box; side: 'left' | 
   );
 }
 
+const BUILDING_FOOTPRINT: Box = { x0: 0, y0: 0, x1: 4, y1: 4, z0: TERRACE_Z, z1: TERRACE_Z + 4.4 };
+
 function Building({ lightRef }: { lightRef: RefObject<SVGRectElement | null> }) {
   const cells = buildingCells();
   return (
     <g>
-      <polygon
-        points={pts([
-          [-0.6, 2.2, TERRACE_Z],
-          [3.4, 2.2, TERRACE_Z],
-          [3.4, 6.2, TERRACE_Z],
-          [-0.6, 6.2, TERRACE_Z],
-        ])}
-        fill={SHADOW}
-      />
+      <Shadow box={BUILDING_FOOTPRINT} />
       {cells.map((c) => {
         const f = boxFaces(c.box);
         const key = `${c.i}-${c.j}-${c.k}`;
@@ -272,8 +347,8 @@ function Building({ lightRef }: { lightRef: RefObject<SVGRectElement | null> }) 
             <polygon points={f.left} fill={BLUE.left} stroke={BLUE.line} strokeWidth={0.6} strokeOpacity={0.5} strokeLinejoin="round" />
             <polygon points={f.right} fill={BLUE.right} stroke={BLUE.line} strokeWidth={0.6} strokeOpacity={0.5} strokeLinejoin="round" />
             <polygon points={f.top} fill={BLUE.top} stroke={BLUE.line} strokeWidth={0.6} strokeOpacity={0.5} strokeLinejoin="round" />
-            {c.archLeft && <Arch box={c.box} side="left" id={`intro-arch-l-${key}`} />}
-            {c.archRight && <Arch box={c.box} side="right" id={`intro-arch-r-${key}`} entrance={c.entrance} lightRef={c.entrance ? lightRef : undefined} />}
+            {c.archLeft && <Arch box={c.box} side="left" id={`intro-arch-l-${key}`} entrance={c.entrance} lightRef={c.entrance ? lightRef : undefined} />}
+            {c.archRight && <Arch box={c.box} side="right" id={`intro-arch-r-${key}`} />}
           </g>
         );
       })}
@@ -299,7 +374,7 @@ function StreetLabels() {
       {STREET_LABELS.map((l) => {
         const [x, y] = project(...l.at);
         return (
-          <text key={l.text} transform={`translate(${x} ${y}) rotate(${l.rot})`} textAnchor="middle">
+          <text key={l.text} transform={`translate(${f1(x)} ${f1(y)}) rotate(${l.rot})`} textAnchor="middle">
             {l.text}
           </text>
         );
@@ -314,7 +389,7 @@ function GateArrow() {
   const [cx, cy] = project(0.55, 8.95);
   const [ex, ey] = project(0.55, 7.35);
   return (
-    <path d={`M${sx} ${sy} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke={INK} strokeWidth={1.3} strokeDasharray="6 5" markerEnd="url(#intro-arrow)" opacity={0.9} />
+    <path d={`M${f1(sx)} ${f1(sy)} Q${f1(cx)} ${f1(cy)} ${f1(ex)} ${f1(ey)}`} fill="none" stroke={INK} strokeWidth={1.3} strokeDasharray="6 5" markerEnd="url(#intro-arrow)" opacity={0.9} />
   );
 }
 
@@ -325,6 +400,7 @@ function Terrace() {
   const wallTop = z + WALL_H;
   return (
     <g>
+      <Shadow box={TERRACE} h={TERRACE_Z + WALL_H} />
       <polygon points={f.left} fill={PLAZA.left} />
       <polygon points={f.right} fill={PLAZA.right} />
       <polygon points={f.top} fill={PLAZA.top} />
@@ -354,7 +430,20 @@ function Terrace() {
   );
 }
 
-function Walls() {
+/** Дальние стороны ограды (задняя и левая) — рисуются до здания. */
+function BackWalls() {
+  const z = TERRACE_Z;
+  const top = z + WALL_H;
+  return (
+    <g>
+      <WhiteBox box={{ x0: TERRACE.x0, y0: TERRACE.y0, x1: TERRACE.x1, y1: TERRACE.y0 + WALL_T, z0: z, z1: top }} />
+      <WhiteBox box={{ x0: TERRACE.x0, y0: TERRACE.y0 + WALL_T, x1: TERRACE.x0 + WALL_T, y1: TERRACE.y1 - WALL_T, z0: z, z1: top }} />
+    </g>
+  );
+}
+
+/** Ближние стороны ограды (правая с калиткой и передняя с воротами) — поверх здания и прохожих. */
+function FrontWalls() {
   const z = TERRACE_Z;
   const top = z + WALL_H;
   const rightX = TERRACE.x1 - WALL_T;
@@ -362,7 +451,7 @@ function Walls() {
   const doorX = TERRACE.x1 - 0.02;
   return (
     <g>
-      <WhiteBox box={{ x0: rightX, y0: TERRACE.y0, x1: TERRACE.x1, y1: SIDE_DOOR.y0, z0: z, z1: top }} />
+      <WhiteBox box={{ x0: rightX, y0: TERRACE.y0 + WALL_T, x1: TERRACE.x1, y1: SIDE_DOOR.y0, z0: z, z1: top }} />
       <polygon
         points={pts([
           [doorX, SIDE_DOOR.y0, z],
@@ -379,19 +468,16 @@ function Walls() {
   );
 }
 
+/** Выноска над зданием, как подписи кварталов на схеме. */
 function BuildingLabel() {
   const [bx, by] = project(2, 2, TERRACE_Z + 4.2);
-  const tx = bx;
-  const ty = by - 150;
+  const ty = by - 140;
   return (
     <g style={{ fontFamily: 'var(--font-ui)' }}>
-      <line x1={tx} y1={ty + 8} x2={bx} y2={by} stroke="#1d2130" strokeWidth={1} />
+      <line x1={bx} y1={ty + 8} x2={bx} y2={by} stroke="#1d2130" strokeWidth={1} />
       <circle cx={bx} cy={by} r={3} fill="#1d2130" />
-      <text x={tx} y={ty - 4} textAnchor="middle" fontSize={17} fontWeight={700} fill="#1d2130" letterSpacing={0.5}>
-        GitLib
-      </text>
-      <text x={tx} y={ty - 24} textAnchor="middle" fontSize={11} fontWeight={500} fill="#5a607a" letterSpacing={1.5}>
-        БИБЛИОТЕКА
+      <text x={bx} y={ty - 2} textAnchor="middle" fontSize={15} fontWeight={600} fill="#1d2130" letterSpacing={0.4}>
+        Библиотека
       </text>
     </g>
   );
@@ -454,8 +540,8 @@ export const IntroScene = memo(function IntroScene({ refs }: { refs: SceneRefs }
       <Lanes />
       <StreetLabels />
       {/* Внешняя группа ставит машину на улицу атрибутом, внутренняя едет CSS-анимацией: одно свойство не перебивает другое */}
-      <g transform={`translate(${ax} ${ay})`}>
-        <g className="intro-car-ambient" style={{ '--intro-dx': `${dx}px`, '--intro-dy': `${dy}px` } as React.CSSProperties}>
+      <g transform={`translate(${f1(ax)} ${f1(ay)})`}>
+        <g className="intro-car-ambient" style={{ '--intro-dx': `${f1(dx)}px`, '--intro-dy': `${f1(dy)}px` } as React.CSSProperties}>
           <CarBody dir="y" />
         </g>
       </g>
@@ -469,27 +555,28 @@ export const IntroScene = memo(function IntroScene({ refs }: { refs: SceneRefs }
         <Tree key={i} spot={t} />
       ))}
       <Terrace />
+      <BackWalls />
       <Building lightRef={refs.doorLight} />
       {PLAZA_PEOPLE.map((f, i) => (
         <StaticPerson key={i} f={f} />
       ))}
       <g ref={refs.walkerIn} className="intro-walker" style={{ display: 'none' }}>
-        <Person />
+        <Person walker />
       </g>
-      <Walls />
+      <FrontWalls />
       {RIGHT_BLOCKS.map((b, i) => (
         <BlockShape key={i} b={b} />
       ))}
       {GARDEN_TREES.map((t, i) => (
-        <Tree key={i} spot={t} />
+        <Tree key={i} spot={t} scale={i === 0 ? 1.15 : 0.9} />
       ))}
       {GARDEN_PEOPLE.map((f, i) => (
         <StaticPerson key={i} f={f} />
       ))}
       <GateArrow />
-      <Tree spot={GATE_TREE} />
+      <Tree spot={GATE_TREE} scale={0.9} />
       <g ref={refs.walkerOut} className="intro-walker" style={{ display: 'none' }}>
-        <Person />
+        <Person walker />
       </g>
       <g ref={refs.car} className="intro-car" style={{ display: 'none' }}>
         <CarBody dir="x" />
