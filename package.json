@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "smoke": "node --disable-warning=ExperimentalWarning scripts/smoke.mjs",
-    "bundle": "node scripts/pack.mjs"
+    "bundle": "node scripts/pack.mjs",
+    "bundle:app": "node scripts/build-app.mjs"
   },
   "dependencies": {
     "@fastify/static": "^10.1.7",
@@ -42,6 +43,8 @@
     "@types/react-dom": "^19.1.11",
     "@vitejs/plugin-react": "^5.0.4",
     "concurrently": "^9.2.1",
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vite": "^7.1.9",

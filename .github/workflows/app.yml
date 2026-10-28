@@ -1,0 +1,53 @@
+name: App
+
+# GitLib.exe и GitLib.app без установленного Node. macOS-сборка возможна только на macOS (codesign),
+# поэтому все три платформы собираются на macos-latest, а затем проверяются smoke на своих системах.
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run bundle:app -- --target all
+      - run: node scripts/smoke.mjs --exe release/gitlib-*-macos-arm64/GitLib.app/Contents/Resources/gitlib-server
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlib-apps
+          path: release/*.zip
+
+  smoke-windows:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: gitlib-apps
+          path: release
+      - shell: bash
+        run: |
+          cd release && unzip -q gitlib-*-windows-x64.zip && cd ..
+          node scripts/smoke.mjs --exe release/gitlib-*-windows-x64/GitLib.exe
+
+  smoke-macos-intel:
+    needs: build
+    # Последний Intel-образ GitHub Actions; если его снимут — удалить задание.
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: gitlib-apps
+          path: release
+      - run: |
+          cd release && unzip -q gitlib-*-macos-x64.zip && cd ..
+          node scripts/smoke.mjs --exe release/gitlib-*-macos-x64/GitLib.app/Contents/Resources/gitlib-server

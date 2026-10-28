@@ -4,6 +4,7 @@
  * отдачу клиента, API и валидацию, затем останавливает процесс.
  *
  *   npm run build && npm run smoke
+ *   npm run smoke -- --exe release/gitlib-<версия>-windows-x64/GitLib.exe   # собранный GitLib.exe / gitlib-server
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
@@ -12,17 +13,20 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const entry = path.join(root, 'dist', 'server', 'index.js');
+const exeArg = process.argv.indexOf('--exe');
+const exe = exeArg >= 0 ? path.resolve(process.argv[exeArg + 1] ?? '') : null;
+const entry = exe ?? path.join(root, 'dist', 'server', 'index.js');
 if (!fs.existsSync(entry)) {
-  console.error('Нет dist/server/index.js — сначала выполните npm run build');
+  console.error(exe ? `Нет ${exe}` : 'Нет dist/server/index.js — сначала выполните npm run build');
   process.exit(1);
 }
 const port = 4877 + Math.floor(Math.random() * 100);
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gitlib-smoke-'));
 const base = `http://127.0.0.1:${port}`;
 
-const child = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', entry], {
-  env: { ...process.env, GITLIB_PORT: String(port), GITLIB_DATA_DIR: dataDir, GITLIB_LOG_LEVEL: 'warn' },
+const [cmd, args] = exe ? [exe, []] : [process.execPath, ['--disable-warning=ExperimentalWarning', entry]];
+const child = spawn(cmd, args, {
+  env: { ...process.env, GITLIB_PORT: String(port), GITLIB_DATA_DIR: dataDir, GITLIB_LOG_LEVEL: 'warn', GITLIB_NO_BROWSER: '1' },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let output = '';

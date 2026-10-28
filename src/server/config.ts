@@ -20,8 +20,8 @@ export const config = {
   avatarsDir: path.join(dataDir, 'avatars'),
   dbPath: path.join(dataDir, 'gitlib.sqlite'),
   settingsPath: path.join(dataDir, 'settings.json'),
-  /** Собранный клиент (dist/client). В dev-режиме отсутствует — используется Vite. */
-  clientDir: path.resolve(here, '..', 'client'),
+  /** Собранный клиент (dist/client). В dev-режиме отсутствует — используется Vite. GitLib.exe распаковывает свой. */
+  clientDir: process.env.GITLIB_CLIENT_DIR?.trim() ? path.resolve(process.env.GITLIB_CLIENT_DIR) : path.resolve(here, '..', 'client'),
   appVersion: '1.0.0',
   /** Максимальный размер README, сохраняемого локально (символов). */
   readmeMaxChars: 200_000,
