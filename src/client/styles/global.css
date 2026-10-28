@@ -328,13 +328,15 @@ h3 {
 .topnav a.active {
   color: var(--ink);
 }
+/* Пунктир прочерчивается один раз при переходе на раздел и дальше стоит */
 .topnav a.active::after {
   opacity: 1;
-  animation: dash-run 1.2s linear infinite;
+  transform-origin: left center;
+  animation: dash-draw var(--dur-base) var(--ease-out) backwards;
 }
-@keyframes dash-run {
-  to {
-    background-position: 10px 0;
+@keyframes dash-draw {
+  from {
+    transform: scaleX(0);
   }
 }
 
@@ -373,25 +375,38 @@ h3 {
   padding: 0 8px;
 }
 .net-dot i {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--lime);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 35%, transparent);
+}
+/* Пульс узла — отдельное кольцо на transform/opacity, без перерисовки тени каждый кадр */
+.net-dot i::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--lime) 18%, transparent);
   animation: node-pulse 2.6s ease-in-out infinite;
 }
 .net-dot.offline i {
   background: var(--coral);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral) 35%, transparent);
-  animation: none;
+}
+.net-dot.offline i::after {
+  display: none;
 }
 @keyframes node-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 35%, transparent);
+    transform: scale(0.7);
+    opacity: 0;
   }
   50% {
-    box-shadow: 0 0 0 6px color-mix(in srgb, var(--lime) 18%, transparent);
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
@@ -1711,16 +1726,16 @@ h3 {
   overflow: hidden;
   gap: 2px;
   margin: 8px 0 6px;
+  /* Прочерчивается одной линией слева направо, вслед за панелью */
+  animation: bar-draw var(--dur-slow) var(--ease-out) 150ms backwards;
 }
 .lang-bar i {
   display: block;
   height: 100%;
-  transform-origin: left;
-  animation: bar-grow var(--dur-slow) var(--ease-out) backwards;
 }
-@keyframes bar-grow {
+@keyframes bar-draw {
   from {
-    transform: scaleX(0);
+    clip-path: inset(0 100% 0 0);
   }
 }
 .lang-legend {
@@ -2292,8 +2307,11 @@ h3 {
     transform: scale(1.06);
   }
 }
+/* Три смешка и снова обычное дыхание — бесконечная частая тряска выглядела как сбой */
 .mascot[data-mood='laugh'] .m-body {
-  animation: m-giggle 0.28s ease-in-out infinite;
+  animation:
+    m-giggle 0.35s ease-in-out 3,
+    m-breathe 4.2s ease-in-out 1.05s infinite;
 }
 @keyframes m-giggle {
   0%,
@@ -2875,11 +2893,13 @@ h3 {
     animation-delay: 0s;
   }
   .card-meta::before,
-  .lang-bar i,
+  .lang-bar,
   .topnav a.active::after,
-  .net-dot i,
   .skeleton {
     animation: none;
+  }
+  .net-dot i::after {
+    display: none;
   }
   .spinner {
     animation-duration: 2s;
