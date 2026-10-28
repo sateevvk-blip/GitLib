@@ -1,14 +1,31 @@
 name: App
 
-# GitLib.exe и GitLib.app без установленного Node. macOS-сборка возможна только на macOS (codesign),
-# поэтому все три платформы собираются на macos-latest, а затем проверяются smoke на своих системах.
+# GitLib.exe (значок в трее) и GitLib.app (значок в строке меню) без установленного Node.
+# Значок компилируется инструментами своей ОС, поэтому каждая платформа собирается на своём раннере.
 on:
   workflow_dispatch:
   push:
     tags: ['v*']
 
 jobs:
-  build:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run bundle:app -- --target win-x64
+      - shell: bash
+        run: node scripts/smoke.mjs --exe release/gitlib-*-windows-x64/gitlib-server.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gitlib-windows
+          path: release/*.zip
+
+  macos:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,36 +34,22 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run bundle:app -- --target all
+      - run: npm run bundle:app -- --target darwin-arm64,darwin-x64
       - run: node scripts/smoke.mjs --exe release/gitlib-*-macos-arm64/GitLib.app/Contents/Resources/gitlib-server
       - uses: actions/upload-artifact@v4
         with:
-          name: gitlib-apps
+          name: gitlib-macos
           path: release/*.zip
 
-  smoke-windows:
-    needs: build
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: gitlib-apps
-          path: release
-      - shell: bash
-        run: |
-          cd release && unzip -q gitlib-*-windows-x64.zip && cd ..
-          node scripts/smoke.mjs --exe release/gitlib-*-windows-x64/GitLib.exe
-
   smoke-macos-intel:
-    needs: build
+    needs: macos
     # Последний Intel-образ GitHub Actions; если его снимут — удалить задание.
     runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: gitlib-apps
+          name: gitlib-macos
           path: release
       - run: |
           cd release && unzip -q gitlib-*-macos-x64.zip && cd ..

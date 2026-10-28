@@ -18,7 +18,7 @@
   <string>{{version}}</string>
   <key>LSMinimumSystemVersion</key>
   <string>11.0</string>
-  <!-- Лаунчер сразу завершается, сервер работает в фоне: иконка в Dock не нужна. -->
+  <!-- Только значок в строке меню, без иконки в Dock. -->
   <key>LSUIElement</key>
   <true/>
 </dict>

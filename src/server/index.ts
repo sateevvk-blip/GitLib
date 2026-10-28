@@ -9,6 +9,7 @@ const { app, service } = buildApp({
   settingsPath: config.settingsPath,
   clientDir: config.clientDir,
   logger: { level: process.env.GITLIB_LOG_LEVEL ?? 'info' },
+  onShutdown: stop,
 });
 
 service.recoverPending();
@@ -23,9 +24,9 @@ app
     process.exit(1);
   });
 
-for (const sig of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(sig, () => {
-    app.log.info('Остановка…');
-    void app.close().then(() => process.exit(0));
-  });
+function stop(): void {
+  app.log.info('Остановка…');
+  void app.close().then(() => process.exit(0));
 }
+
+for (const sig of ['SIGINT', 'SIGTERM'] as const) process.on(sig, stop);

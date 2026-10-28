@@ -151,3 +151,34 @@ describe('REST API', () => {
     expect((await app.inject({ method: 'GET', url: '/api/unknown' })).statusCode).toBe(404);
   });
 });
+
+describe('POST /api/shutdown', () => {
+  it('без onShutdown маршрута нет', async () => {
+    expect((await app.inject({ method: 'POST', url: '/api/shutdown', headers: { 'x-gitlib-shutdown': '1' } })).statusCode).toBe(404);
+  });
+
+  it('останавливает только с заголовком X-GitLib-Shutdown', async () => {
+    const { store, dataDir } = makeStore();
+    let calls = 0;
+    const { app: local } = buildApp({
+      dataDir,
+      dbPath: path.join(dataDir, 'gitlib.sqlite'),
+      settingsPath: path.join(dataDir, 'settings.json'),
+      store,
+      settings: makeSettings(dataDir),
+      onShutdown: () => {
+        calls += 1;
+      },
+    });
+    await local.ready();
+    const forbidden = await local.inject({ method: 'POST', url: '/api/shutdown' });
+    expect(forbidden.statusCode).toBe(403);
+    expect(calls).toBe(0);
+
+    const ok = await local.inject({ method: 'POST', url: '/api/shutdown', headers: { 'x-gitlib-shutdown': '1' } });
+    expect(ok.statusCode).toBe(202);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(calls).toBe(1);
+    await local.close();
+  });
+});

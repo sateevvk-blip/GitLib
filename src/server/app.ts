@@ -22,6 +22,8 @@ export interface AppOptions {
   service?: LibraryService;
   settings?: SettingsStore;
   store?: LibraryStore;
+  /** Остановка по `POST /api/shutdown` (значок в трее). Без него маршрута нет. */
+  onShutdown?: () => void;
 }
 
 export interface AppContext {
@@ -94,6 +96,18 @@ export function buildApp(opts: AppOptions): AppContext {
     repos: store.count(),
     pendingAnalyses: service.pendingCount(),
   }));
+
+  const onShutdown = opts.onShutdown;
+  if (onShutdown) {
+    app.post('/api/shutdown', async (req, reply) => {
+      // Свой заголовок чужая страница не отправит без CORS-preflight, а CORS сервер не разрешает.
+      if (req.headers['x-gitlib-shutdown'] !== '1') {
+        return reply.status(403).send({ error: 'Нужен заголовок X-GitLib-Shutdown: 1', code: 'forbidden' });
+      }
+      reply.raw.once('finish', () => setImmediate(onShutdown));
+      return reply.status(202).send({ ok: true });
+    });
+  }
 
   registerRepoRoutes(app, service);
   registerCollectionRoutes(app, service);

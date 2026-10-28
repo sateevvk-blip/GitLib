@@ -6,8 +6,9 @@
  *   npm run bundle:app -- --target win-x64          # win-x64 | darwin-arm64 | darwin-x64 | all
  *   npm run bundle:app -- --skip-build              # не пересобирать клиент
  *
- * Windows-сборку можно делать на любой ОС. macOS-сборку — только на macOS: бинарник после вшивания
- * нужно заново подписать (`codesign`), иначе Apple Silicon его не запустит. Результат — release/gitlib-<версия>-<платформа>.zip.
+ * Рядом с сервером кладётся значок в трее: на Windows — GitLib.exe (C#, собирается встроенным в Windows csc.exe),
+ * на macOS — GitLib.app со значком в строке меню (Swift, swiftc). Поэтому каждая платформа собирается на своей ОС;
+ * macOS-бинарник к тому же нужно заново подписать (`codesign`). Результат — release/gitlib-<версия>-<платформа>.zip.
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -46,11 +47,11 @@ function run(cmd, args, opts = {}) {
 function parseTargets() {
   const i = process.argv.indexOf('--target');
   const raw = i >= 0 ? process.argv[i + 1] : `${process.platform === 'win32' ? 'win' : process.platform}-${process.arch}`;
-  const list = raw === 'all' ? Object.keys(TARGETS) : raw.split(',');
+  const list = raw === 'all' ? Object.keys(TARGETS).filter((t) => TARGETS[t].os === process.platform) : raw.split(',');
   for (const t of list) if (!TARGETS[t]) fail(`Неизвестная платформа «${t}». Доступны: ${Object.keys(TARGETS).join(', ')}, all`);
-  const mac = list.filter((t) => TARGETS[t].os === 'darwin');
-  if (mac.length && process.platform !== 'darwin') {
-    fail(`Сборка ${mac.join(', ')} возможна только на macOS (нужен codesign). Соберите на Mac или в GitHub Actions (.github/workflows/app.yml).`);
+  const foreign = list.filter((t) => TARGETS[t].os !== process.platform);
+  if (foreign.length) {
+    fail(`Сборка ${foreign.join(', ')} возможна только на своей ОС (значок в трее компилируется её инструментами). Соберите там или в GitHub Actions (.github/workflows/app.yml).`);
   }
   return list;
 }
@@ -153,6 +154,23 @@ async function makeExecutable(target, blob, outFile) {
   if (isMac) run('codesign', ['--sign', '-', '--force', outFile]);
 }
 
+/** Значок в трее Windows: компилятор C# есть в каждой Windows 10/11 в составе .NET Framework 4.x. */
+function buildWindowsTray(outFile) {
+  const csc = path.join(process.env.WINDIR ?? 'C:\\Windows', 'Microsoft.NET', 'Framework64', 'v4.0.30319', 'csc.exe');
+  if (!fs.existsSync(csc)) fail(`Не найден ${csc} (.NET Framework 4.x)`);
+  const src = path.join(templates, 'windows');
+  run(csc, ['-nologo', '-target:winexe', '-optimize+', '-codepage:65001', `-win32icon:${path.join(src, 'gitlib.ico')}`,
+    `-out:${outFile}`, '-r:System.Windows.Forms.dll', '-r:System.Drawing.dll', path.join(src, 'GitLibTray.cs')]);
+}
+
+/** Значок в строке меню macOS; ad-hoc подпись ставит компоновщик, повторяем её для надёжности. */
+function buildMacMenu(target, outFile) {
+  const arch = target === 'darwin-arm64' ? 'arm64' : 'x86_64';
+  fs.mkdirSync(path.dirname(outFile), { recursive: true });
+  run('swiftc', ['-O', '-target', `${arch}-apple-macos11`, path.join(templates, 'macos', 'GitLibMenu.swift'), '-o', outFile]);
+  run('codesign', ['--sign', '-', '--force', outFile]);
+}
+
 function writeTemplate(file, target, transform = (s) => s) {
   let text = fs.readFileSync(path.join(templates, file), 'utf8').replaceAll('{{version}}', pkg.version).replace(/\r\n/g, '\n');
   text = transform(text);
@@ -165,21 +183,23 @@ async function packageTarget(target, blob) {
   const name = `gitlib-${pkg.version}-${t.label}`;
   const outDir = path.join(releaseDir, name);
   const zipPath = path.join(releaseDir, `${name}.zip`);
-  fs.rmSync(outDir, { recursive: true, force: true });
+  // Чистим содержимое, а не саму папку: её может держать открытый Проводник или Finder.
+  fs.mkdirSync(outDir, { recursive: true });
+  for (const entry of fs.readdirSync(outDir)) fs.rmSync(path.join(outDir, entry), { recursive: true, force: true });
   fs.rmSync(zipPath, { force: true });
   console.log(`\nСобираю ${name}…`);
 
   let count;
   if (t.os === 'win32') {
-    await makeExecutable(target, blob, path.join(outDir, 'GitLib.exe'));
+    await makeExecutable(target, blob, path.join(outDir, 'gitlib-server.exe'));
+    buildWindowsTray(path.join(outDir, 'GitLib.exe'));
     writeTemplate('README-windows.md', path.join(outDir, 'README.md'), (s) => s.replace(/\n/g, '\r\n'));
     count = writeZip(outDir, zipPath, name, new Set());
   } else {
     const app = path.join(outDir, 'GitLib.app');
     await makeExecutable(target, blob, path.join(app, 'Contents', 'Resources', 'gitlib-server'));
     writeTemplate('Info.plist', path.join(app, 'Contents', 'Info.plist'));
-    writeTemplate('launcher.sh', path.join(app, 'Contents', 'MacOS', 'GitLib'));
-    fs.chmodSync(path.join(app, 'Contents', 'MacOS', 'GitLib'), 0o755);
+    buildMacMenu(target, path.join(app, 'Contents', 'MacOS', 'GitLib'));
     writeTemplate('README-macos.md', path.join(outDir, 'README.md'));
     count = writeZip(outDir, zipPath, name, new Set(['GitLib.app/Contents/MacOS/GitLib', 'GitLib.app/Contents/Resources/gitlib-server']));
   }

@@ -97,7 +97,8 @@ async function main(): Promise<void> {
 
   for (let i = 0; i < 50; i += 1) {
     if (await isRunning()) {
-      console.log(`\n  GitLib работает: ${url}\n  Данные: ${process.env.GITLIB_DATA_DIR}\n  Остановить — Ctrl+C или закрыть это окно.\n`);
+      const stopHint = process.env.GITLIB_TRAY ? '«Выключить GitLib» в меню значка' : 'Ctrl+C или закрыть это окно';
+      console.log(`\n  GitLib работает: ${url}\n  Данные: ${process.env.GITLIB_DATA_DIR}\n  Остановить — ${stopHint}.\n`);
       open(url);
       return;
     }
