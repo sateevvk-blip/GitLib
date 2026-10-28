@@ -5,13 +5,17 @@ import { peek, phrases, pick, react, setAmbient, timeGreeting, useMascot } from 
 import { CHARACTERS } from './characters';
 import { hasChosenCharacter, useCharacter } from './choice';
 import { useOnline } from '../lib/online';
+import { usePresence } from '../lib/motion';
 
 const GREETED_KEY = 'gitlib.greeted';
 /** Через сколько бездействия маскот задремлет. */
 const DOZE_MS = 4 * 60 * 1000;
 
 export function MascotDock() {
-  const { mood, message, link } = useMascot();
+  const mascot = useMascot();
+  const { mood } = mascot;
+  // Реплика доигрывает уход после того, как стор вернулся в покой.
+  const { shown: bubble, leaving } = usePresence(mascot.message ? mascot : null, '--dur-quick');
   const online = useOnline();
   const characterId = useCharacter();
   const character = CHARACTERS[characterId];
@@ -92,12 +96,12 @@ export function MascotDock() {
 
   return (
     <div className="mascot-dock" aria-live="polite">
-      {message && (
-        <div className="mascot-bubble" key={message}>
-          <span>{message}</span>
-          {link && (
-            <Link className="mascot-bubble-link" to={link.to}>
-              {link.label}
+      {bubble?.message && (
+        <div className={`mascot-bubble${leaving ? ' is-leaving' : ''}`} key={bubble.message}>
+          <span>{bubble.message}</span>
+          {bubble.link && (
+            <Link className="mascot-bubble-link" to={bubble.link.to}>
+              {bubble.link.label}
             </Link>
           )}
         </div>

@@ -8,7 +8,7 @@ export function Toasts() {
   return (
     <div className="toasts" role="status" aria-live="polite">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast toast-${t.kind}`}>
+        <div key={t.id} className={`toast toast-${t.kind}${t.leaving ? ' is-leaving' : ''}`}>
           <span>{t.text}</span>
           {t.action && (
             <Link to={t.action.href} onClick={() => dismissToast(t.id)}>

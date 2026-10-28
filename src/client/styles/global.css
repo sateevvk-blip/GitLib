@@ -49,7 +49,14 @@
   --radius: 3px;
   --radius-lg: 4px;
   --rail-w: 256px;
+  /* Движение: три длительности на весь интерфейс. Свои тайминги — только у фоновых петель
+     и реакций маскота. Вход и движение на экране — --ease-out, уход — --ease-in,
+     пружина — только маскот, «звёздочка» и значок логотипа. */
+  --dur-quick: 150ms; /* наведение, нажатие, цвет; уход тостов и реплик */
+  --dur-base: 250ms; /* появление карточек, панелей, тостов, реплик; уход диалога */
+  --dur-slow: 350ms; /* диалог, полоса языков */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-spring: cubic-bezier(0.3, 1.4, 0.5, 1);
   color-scheme: light;
 }
@@ -257,7 +264,7 @@ h3 {
   width: 24px;
   height: 24px;
   display: block;
-  transition: transform 0.5s var(--ease-spring);
+  transition: transform var(--dur-base) var(--ease-spring);
 }
 .wordmark:hover .wordmark-cube {
   transform: rotate(-12deg) translateY(-2px);
@@ -294,7 +301,7 @@ h3 {
   text-transform: uppercase;
   color: var(--ink-3);
   padding: 8px 10px 9px;
-  transition: color 0.15s;
+  transition: color var(--dur-quick) var(--ease-out);
 }
 .topnav a::before {
   counter-increment: nav;
@@ -312,7 +319,7 @@ h3 {
   height: 2px;
   background: repeating-linear-gradient(90deg, var(--cobalt) 0 6px, transparent 6px 10px);
   opacity: 0;
-  transition: opacity 0.2s;
+  transition: opacity var(--dur-quick) var(--ease-out);
 }
 .topnav a:hover {
   text-decoration: none;
@@ -409,7 +416,7 @@ h3 {
   border-radius: var(--radius);
   background: var(--paper-2);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.2s var(--ease-out);
+  transition: border-color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
 .search input:focus {
   border-color: var(--cobalt);
@@ -470,7 +477,7 @@ h3 {
   cursor: pointer;
   white-space: nowrap;
   box-shadow: 2px 2px 0 var(--ink);
-  transition: background 0.15s, border-color 0.15s, transform 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out), color 0.15s;
+  transition: background var(--dur-quick) var(--ease-out), border-color var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out), color var(--dur-quick) var(--ease-out);
 }
 :root[data-theme='dark'] .btn {
   border-color: var(--cobalt-line);
@@ -568,7 +575,7 @@ h3 {
   border-radius: var(--radius);
   background: var(--paper-2);
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.2s var(--ease-out);
+  transition: border-color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
 .input:focus,
 .textarea:focus,
@@ -640,7 +647,7 @@ h3 {
   cursor: pointer;
   white-space: nowrap;
   max-width: 100%;
-  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.15s var(--ease-out), box-shadow 0.15s var(--ease-out);
+  transition: border-color var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out), color var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
 .chip span {
   overflow: hidden;
@@ -776,7 +783,7 @@ h3 {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: background var(--dur-quick) var(--ease-out), color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
 .status-select button:hover {
   color: var(--ink);
@@ -879,7 +886,7 @@ h3 {
   font-size: 14px;
   text-align: left;
   cursor: pointer;
-  transition: background 0.12s, color 0.12s;
+  transition: background var(--dur-quick) var(--ease-out), color var(--dur-quick) var(--ease-out);
 }
 .rail-item::before {
   content: '';
@@ -891,7 +898,7 @@ h3 {
   background: var(--cobalt);
   opacity: 0;
   transform: scaleY(0.3);
-  transition: opacity 0.15s, transform 0.2s var(--ease-out);
+  transition: opacity var(--dur-quick) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 .rail-item:hover {
   background: var(--paper-3);
@@ -969,7 +976,7 @@ h3 {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-3);
-  animation: fade-up 0.5s var(--ease-out) backwards;
+  animation: fade-up var(--dur-base) var(--ease-out) backwards;
 }
 .sheet-label::before {
   content: '';
@@ -985,7 +992,7 @@ h3 {
 }
 .lib-title {
   font-size: 46px;
-  animation: fade-up 0.55s var(--ease-out) 0.05s backwards;
+  animation: fade-up var(--dur-base) var(--ease-out) 50ms backwards;
 }
 .lib-sub {
   margin-top: 8px;
@@ -1067,8 +1074,8 @@ h3 {
   background: var(--paper-2);
   color: inherit;
   min-width: 0;
-  transition: border-color 0.2s, transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
-  animation: card-in 0.3s var(--ease-out) backwards;
+  transition: border-color var(--dur-quick) var(--ease-out), transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+  animation: card-in var(--dur-base) var(--ease-out) backwards;
   animation-delay: calc(var(--i, 0) * 30ms);
 }
 @keyframes card-in {
@@ -1086,7 +1093,7 @@ h3 {
   height: 12px;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s, transform 0.25s var(--ease-out);
+  transition: opacity var(--dur-quick) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 .card::before {
   top: -7px;
@@ -1157,7 +1164,7 @@ h3 {
   background-repeat: no-repeat;
   background-size: 0 1.5px;
   background-position: 0 100%;
-  transition: background-size 0.3s var(--ease-out);
+  transition: background-size var(--dur-base) var(--ease-out);
   padding-bottom: 1px;
   display: inline-block;
   max-width: 100%;
@@ -1178,7 +1185,7 @@ h3 {
   color: var(--ink-3);
   cursor: pointer;
   margin: -6px -6px 0 0;
-  transition: transform 0.2s var(--ease-spring), color 0.15s;
+  transition: transform var(--dur-base) var(--ease-spring), color var(--dur-quick) var(--ease-out);
 }
 .card-fav:hover {
   color: var(--coral-ink);
@@ -1243,7 +1250,7 @@ h3 {
     linear-gradient(var(--line-strong), var(--line-strong)) right center / 1px 9px no-repeat,
     linear-gradient(var(--line-strong), var(--line-strong)) center / 100% 1px no-repeat;
   transform-origin: left center;
-  animation: dim-draw 0.3s var(--ease-out) backwards;
+  animation: dim-draw var(--dur-base) var(--ease-out) backwards;
   animation-delay: calc(var(--i, 0) * 30ms + 150ms);
 }
 @keyframes dim-draw {
@@ -1453,7 +1460,7 @@ h3 {
   align-items: flex-start;
   margin-bottom: 26px;
   flex-wrap: wrap;
-  animation: fade-up 0.5s var(--ease-out) backwards;
+  animation: fade-up var(--dur-base) var(--ease-out) backwards;
 }
 .repo-head-main {
   flex: 1;
@@ -1504,7 +1511,7 @@ h3 {
   text-decoration: none;
 }
 .back-link svg {
-  transition: transform 0.2s var(--ease-out);
+  transition: transform var(--dur-quick) var(--ease-out);
 }
 .back-link:hover svg {
   transform: translateX(-3px);
@@ -1537,7 +1544,7 @@ h3 {
   border-radius: var(--radius-lg);
   background: var(--paper-2);
   padding: 20px 22px;
-  animation: fade-up 0.5s var(--ease-out) backwards;
+  animation: fade-up var(--dur-base) var(--ease-out) backwards;
 }
 .repo-main .panel:nth-child(2) {
   animation-delay: 0.06s;
@@ -1709,7 +1716,7 @@ h3 {
   display: block;
   height: 100%;
   transform-origin: left;
-  animation: bar-grow 0.6s var(--ease-out) backwards;
+  animation: bar-grow var(--dur-slow) var(--ease-out) backwards;
 }
 @keyframes bar-grow {
   from {
@@ -2108,7 +2115,7 @@ h3 {
   background: var(--paper-2);
   box-shadow: var(--shadow-2);
   font-size: 14px;
-  animation: toast-in 0.25s ease;
+  animation: toast-in var(--dur-base) var(--ease-out);
 }
 .toast-success {
   border-color: color-mix(in srgb, var(--lime) 70%, var(--line));
@@ -2134,6 +2141,17 @@ h3 {
   from {
     opacity: 0;
     transform: translateY(8px);
+  }
+}
+/* Уход к ближнему краю; удаляет тост lib/toast.ts через --dur-quick */
+.toast.is-leaving {
+  animation: toast-out var(--dur-quick) var(--ease-in) forwards;
+  pointer-events: none;
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(-16px);
   }
 }
 
@@ -2172,7 +2190,7 @@ h3 {
   font-size: 13.5px;
   line-height: 1.4;
   box-shadow: 3px 3px 0 var(--ink);
-  animation: bubble-in 0.22s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: bubble-in var(--dur-base) var(--ease-spring);
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -2194,13 +2212,23 @@ h3 {
     transform: translateY(6px) scale(0.96);
   }
 }
+.mascot-bubble.is-leaving {
+  animation: bubble-out var(--dur-quick) var(--ease-in) forwards;
+  pointer-events: none;
+}
+@keyframes bubble-out {
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+}
 
 /* --- общие движения --- */
 
 .mascot {
   overflow: visible;
   transform-origin: 50% 92%;
-  transition: transform 0.25s;
+  transition: transform var(--dur-base) var(--ease-out);
 }
 .mascot .m-body {
   transform-origin: 80px 150px;
@@ -2218,10 +2246,10 @@ h3 {
 .mascot[data-mood='happy'],
 .mascot[data-mood='love'],
 .mascot[data-mood='wave'] {
-  animation: m-hop 0.7s cubic-bezier(0.3, 1.4, 0.5, 1);
+  animation: m-hop 0.7s var(--ease-spring);
 }
 .mascot[data-mood='party'] {
-  animation: m-hop 0.5s cubic-bezier(0.3, 1.4, 0.5, 1) 3;
+  animation: m-hop 0.5s var(--ease-spring) 3;
 }
 @keyframes m-hop {
   0% {
@@ -2516,7 +2544,7 @@ h3 {
 
 .mascot .m-sprite {
   transform-origin: 80px 178px;
-  animation: m-pose 0.32s cubic-bezier(0.3, 1.4, 0.5, 1);
+  animation: m-pose 0.32s var(--ease-spring);
 }
 @keyframes m-pose {
   0% {
@@ -2551,7 +2579,7 @@ h3 {
   cursor: pointer;
   text-align: center;
   color: var(--ink);
-  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+  transition: border-color var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
 .mascot-card:hover {
   border-color: var(--cobalt-line);
@@ -2663,6 +2691,7 @@ h3 {
   justify-content: center;
   background: rgba(10, 12, 16, 0.45);
   backdrop-filter: blur(3px);
+  animation: fade-in var(--dur-base) var(--ease-out);
 }
 .confirm-box {
   width: min(440px, calc(100vw - 40px));
@@ -2671,6 +2700,26 @@ h3 {
   background: var(--paper-2);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-2);
+  animation: dialog-in var(--dur-slow) var(--ease-out);
+}
+/* Уход при отмене; Confirm.tsx вызывает onCancel через --dur-base */
+.confirm.is-leaving {
+  animation: fade-out var(--dur-base) var(--ease-in) forwards;
+}
+.confirm.is-leaving .confirm-box {
+  animation: dialog-out var(--dur-base) var(--ease-in) forwards;
+}
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+}
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }
 .confirm-box h3 {
   font-size: 18px;
@@ -2808,10 +2857,19 @@ h3 {
   .panel,
   .card,
   .toast,
-  .mascot-bubble {
+  .mascot-bubble,
+  .confirm,
+  .confirm-box {
     animation-name: fade-in;
-    animation-duration: 0.15s;
+    animation-duration: var(--dur-quick);
     animation-timing-function: linear;
+  }
+  .toast.is-leaving,
+  .mascot-bubble.is-leaving,
+  .confirm.is-leaving,
+  .confirm.is-leaving .confirm-box {
+    animation-name: fade-out;
+    animation-duration: var(--dur-quick);
   }
   .card {
     animation-delay: 0s;
@@ -2843,6 +2901,11 @@ h3 {
 }
 @keyframes fade-in {
   from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
     opacity: 0;
   }
 }

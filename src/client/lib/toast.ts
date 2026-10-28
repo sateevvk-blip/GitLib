@@ -1,10 +1,13 @@
 import { useSyncExternalStore } from 'react';
+import { cssDuration } from './motion';
 
 export interface Toast {
   id: number;
   kind: 'info' | 'success' | 'error';
   text: string;
   action?: { label: string; href: string };
+  /** Играет анимацию ухода; удаляется из списка через --dur-quick. */
+  leaving?: boolean;
 }
 
 let toasts: Toast[] = [];
@@ -23,9 +26,18 @@ export function toast(kind: Toast['kind'], text: string, action?: Toast['action'
 }
 
 export function dismissToast(id: number): void {
-  if (!toasts.some((t) => t.id === id)) return;
-  toasts = toasts.filter((t) => t.id !== id);
+  if (!toasts.some((t) => t.id === id && !t.leaving)) return;
+  toasts = toasts.map((t) => (t.id === id ? { ...t, leaving: true } : t));
   emit();
+  setTimeout(() => {
+    toasts = toasts.filter((t) => t.id !== id);
+    emit();
+  }, cssDuration('--dur-quick'));
+}
+
+/** Текущий список вне React (для тестов). */
+export function peekToasts(): readonly Toast[] {
+  return toasts;
 }
 
 export function useToasts(): Toast[] {
