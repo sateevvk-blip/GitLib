@@ -23,7 +23,7 @@ export function RepoCard({ repo, index = 0, activeTopics, onToggleFavorite, onTo
   const active = new Set(activeTopics.map((t) => t.toLocaleLowerCase()));
 
   return (
-    <Link to={`/repo/${repo.id}`} className="card" style={{ '--i': Math.min(index, 14) } as CSSProperties}>
+    <Link to={`/repo/${repo.id}`} className="card" style={{ '--i': Math.min(index, 10) } as CSSProperties}>
       <span className="card-index" aria-hidden="true">
         № {String(index + 1).padStart(3, '0')}
       </span>

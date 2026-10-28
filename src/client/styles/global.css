@@ -969,7 +969,7 @@ h3 {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-3);
-  animation: fade-up 0.5s var(--ease-out) both;
+  animation: fade-up 0.5s var(--ease-out) backwards;
 }
 .sheet-label::before {
   content: '';
@@ -985,7 +985,7 @@ h3 {
 }
 .lib-title {
   font-size: 46px;
-  animation: fade-up 0.55s var(--ease-out) 0.05s both;
+  animation: fade-up 0.55s var(--ease-out) 0.05s backwards;
 }
 .lib-sub {
   margin-top: 8px;
@@ -1068,8 +1068,8 @@ h3 {
   color: inherit;
   min-width: 0;
   transition: border-color 0.2s, transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
-  animation: card-in 0.5s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 45ms);
+  animation: card-in 0.3s var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 30ms);
 }
 @keyframes card-in {
   from {
@@ -1243,8 +1243,8 @@ h3 {
     linear-gradient(var(--line-strong), var(--line-strong)) right center / 1px 9px no-repeat,
     linear-gradient(var(--line-strong), var(--line-strong)) center / 100% 1px no-repeat;
   transform-origin: left center;
-  animation: dim-draw 0.5s var(--ease-out) both;
-  animation-delay: calc(var(--i, 0) * 45ms + 250ms);
+  animation: dim-draw 0.3s var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 30ms + 150ms);
 }
 @keyframes dim-draw {
   from {
@@ -1453,7 +1453,7 @@ h3 {
   align-items: flex-start;
   margin-bottom: 26px;
   flex-wrap: wrap;
-  animation: fade-up 0.5s var(--ease-out) both;
+  animation: fade-up 0.5s var(--ease-out) backwards;
 }
 .repo-head-main {
   flex: 1;
@@ -1537,7 +1537,7 @@ h3 {
   border-radius: var(--radius-lg);
   background: var(--paper-2);
   padding: 20px 22px;
-  animation: fade-up 0.5s var(--ease-out) both;
+  animation: fade-up 0.5s var(--ease-out) backwards;
 }
 .repo-main .panel:nth-child(2) {
   animation-delay: 0.06s;
@@ -1709,7 +1709,7 @@ h3 {
   display: block;
   height: 100%;
   transform-origin: left;
-  animation: bar-grow 0.6s var(--ease-out) both;
+  animation: bar-grow 0.6s var(--ease-out) backwards;
 }
 @keyframes bar-grow {
   from {
@@ -2531,11 +2531,6 @@ h3 {
 .mascot[data-mood='sleep'] .m-sprite {
   filter: saturate(0.7) brightness(0.96);
 }
-@media (prefers-reduced-motion: reduce) {
-  .mascot .m-sprite {
-    animation: none;
-  }
-}
 
 /* --- выбор маскота в настройках --- */
 
@@ -2799,5 +2794,55 @@ h3 {
   .topbar {
     border-bottom-width: 1px;
     border-bottom-style: solid;
+  }
+}
+
+/* ---------- меньше движения ----------
+   Последним в файле, чтобы перекрыть правила выше. Появления — только прозрачность, без сдвига;
+   фоновые петли стоят; наведение и нажатие не двигают элементы. Спиннер крутится медленнее:
+   он сообщает, что идёт работа. Маскот — отдельным блоком в своём разделе. */
+@media (prefers-reduced-motion: reduce) {
+  .sheet-label,
+  .lib-title,
+  .repo-head,
+  .panel,
+  .card,
+  .toast,
+  .mascot-bubble {
+    animation-name: fade-in;
+    animation-duration: 0.15s;
+    animation-timing-function: linear;
+  }
+  .card {
+    animation-delay: 0s;
+  }
+  .card-meta::before,
+  .lang-bar i,
+  .topnav a.active::after,
+  .net-dot i,
+  .skeleton {
+    animation: none;
+  }
+  .spinner {
+    animation-duration: 2s;
+  }
+  .wordmark:hover .wordmark-cube,
+  .btn:hover,
+  .btn:active,
+  .btn-ghost:active,
+  .chip:hover,
+  .card:hover,
+  .card::before,
+  .card::after,
+  .card-fav:hover,
+  .back-link:hover svg,
+  .mascot-card:hover,
+  .rail-item::before {
+    transform: none;
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
   }
 }
