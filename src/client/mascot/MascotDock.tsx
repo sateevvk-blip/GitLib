@@ -6,6 +6,7 @@ import { CHARACTERS } from './characters';
 import { hasChosenCharacter, useCharacter } from './choice';
 import { useOnline } from '../lib/online';
 import { usePresence } from '../lib/motion';
+import { afterIntro } from '../intro/gate';
 
 const GREETED_KEY = 'gitlib.greeted';
 /** Через сколько бездействия маскот задремлет. */
@@ -33,11 +34,18 @@ export function MascotDock() {
       /* sessionStorage может быть недоступен */
     }
     if (greeted) return;
-    const t = setTimeout(() => {
-      if (hasChosenCharacter()) react('wave', `${timeGreeting()} ${pick(character.voice.greeting)}`, 5000);
-      else react('wave', `Привет, я ${character.name}. ${phrases.chooseMe}`, 8000, { label: 'Выбрать напарника', to: '/settings#mascot' });
-    }, 600);
-    return () => clearTimeout(t);
+    // Если идёт заставка, здороваемся после неё — иначе реплика уйдёт под оверлей.
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const off = afterIntro(() => {
+      t = setTimeout(() => {
+        if (hasChosenCharacter()) react('wave', `${timeGreeting()} ${pick(character.voice.greeting)}`, 5000);
+        else react('wave', `Привет, я ${character.name}. ${phrases.chooseMe}`, 8000, { label: 'Выбрать напарника', to: '/settings#mascot' });
+      }, 600);
+    });
+    return () => {
+      off();
+      if (t) clearTimeout(t);
+    };
     // Только при монтировании: персонаж на момент загрузки.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

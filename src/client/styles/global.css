@@ -3172,3 +3172,153 @@ h3 {
     opacity: 0;
   }
 }
+
+/* ---------- заставка: въезд в библиотеку ---------- */
+/* Сцена — светлый постер по референсу дизайн/0cf0…jpg, одинаковый в обеих темах;
+   камера (наезд) — transform на <svg>, актёры двигаются из src/client/intro/Intro.tsx. */
+
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: #e6e4df;
+  color: #1d2130;
+  color-scheme: light;
+  opacity: var(--intro-opacity, 1);
+  animation: fade-in 400ms var(--ease-out);
+}
+/* Стоп-кадр (?intro=мс) — без появления; уход (пропуск) объявлен ниже и имеет приоритет */
+.intro--frozen {
+  animation: none;
+}
+.intro--leaving {
+  animation: intro-out var(--dur-base) var(--ease-in) forwards;
+}
+@keyframes intro-out {
+  from {
+    opacity: var(--intro-opacity, 1);
+  }
+  to {
+    opacity: 0;
+  }
+}
+.intro-scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  will-change: transform;
+}
+.intro-title {
+  position: absolute;
+  left: 50%;
+  top: 74%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.intro-title b {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(22px, 2.6vw, 36px);
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+.intro-title span {
+  display: block;
+  margin-top: 6px;
+  font: 500 clamp(11px, 1vw, 14px) / 1.4 var(--font-ui);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: #5a607a;
+}
+.intro-skip {
+  position: absolute;
+  right: 28px;
+  bottom: 26px;
+  padding: 8px 14px;
+  font: 600 13px var(--font-ui);
+  letter-spacing: 0.03em;
+  color: #1d2130;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid #b9b6ae;
+  border-radius: var(--radius);
+  box-shadow: 3px 3px 0 #d6d3cc;
+  cursor: pointer;
+  transition: background var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out);
+}
+.intro-skip:hover {
+  background: #fff;
+  transform: translate(-1px, -1px);
+}
+.intro-skip:focus-visible {
+  outline: 2px solid #2b49b8;
+  outline-offset: 2px;
+}
+.intro-skip kbd {
+  font: inherit;
+  margin-left: 6px;
+  opacity: 0.55;
+}
+
+/* Прохожий: стоит — ноги вместе; идёт — два кадра шага сменяют друг друга и фигура чуть покачивается */
+.intro-leg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+.intro-leg-a,
+.intro-leg-b {
+  opacity: 0;
+}
+.intro-walker.is-walking .intro-leg-s {
+  opacity: 0;
+}
+.intro-walker.is-walking .intro-leg-a {
+  animation: intro-step 0.44s steps(1, end) infinite;
+}
+.intro-walker.is-walking .intro-leg-b {
+  animation: intro-step 0.44s steps(1, end) infinite;
+  animation-delay: -0.22s;
+}
+.intro-walker.is-walking .intro-walker-body {
+  animation: intro-bob 0.44s ease-in-out infinite;
+}
+@keyframes intro-step {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes intro-bob {
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+/* Фоновая машина за зданием: едет по дальней улице по кругу (смещение относительно своей точки на улице) */
+.intro-car-ambient {
+  animation: intro-drive 16s linear infinite;
+}
+@keyframes intro-drive {
+  to {
+    transform: translate(var(--intro-dx), var(--intro-dy));
+  }
+}
+
+/* Заставку при reduced-motion не запускает JS (gate.ts); правило — страховка, стоп-кадр ?intro= остаётся доступен */
+@media (prefers-reduced-motion: reduce) {
+  .intro:not(.intro--frozen) {
+    display: none;
+  }
+}

@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { TopBar } from './components/TopBar';
 import { Toasts } from './components/Toasts';
 import { MascotDock } from './mascot/MascotDock';
+import { Intro } from './intro/Intro';
 import { LibraryPage } from './pages/LibraryPage';
 import { RepoPage } from './pages/RepoPage';
 import { CollectionsPage } from './pages/CollectionsPage';
@@ -33,6 +34,7 @@ export function App() {
       </Routes>
       <MascotDock />
       <Toasts />
+      <Intro />
     </>
   );
 }
