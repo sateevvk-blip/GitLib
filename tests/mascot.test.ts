@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MOODS, MOOD_LABELS } from '../src/client/mascot/moods';
-import { CHARACTERS, CHARACTER_IDS, DEFAULT_CHARACTER, LEGACY_CHARACTER_IDS, POSE_FOR_MOOD, isCharacterId, spriteFor } from '../src/client/mascot/characters';
+import { CHARACTERS, CHARACTER_IDS, CHARACTER_POSES, DEFAULT_CHARACTER, LEGACY_CHARACTER_IDS, POSE_FOR_MOOD, isCharacterId, spriteFor } from '../src/client/mascot/characters';
 import { SPRITES } from '../src/client/mascot/sprites/manifest';
 import { isMilestone, timeGreeting } from '../src/client/mascot/store';
 
@@ -29,21 +29,40 @@ describe('маскот: персонажи', () => {
     }
   });
 
-  it('у персонажей с листом поз есть все шесть поз, у остальных — запасная на любое настроение', () => {
+  it('у персонажей с общим листом есть все шесть поз', () => {
     for (const id of ['lemon', 'cat', 'banana', 'baller'] as const) {
       for (const pose of ['wave', 'thumbs', 'run', 'sit', 'think', 'cheer'] as const) {
         expect(SPRITES[id].poses[pose], `${id}.${pose}`).toBeDefined();
       }
     }
+    expect(spriteFor('lemon', 'wave').pose).toBe('wave');
+  });
+
+  it('каждое настроение у каждого персонажа ведёт к позе из его собственного листа', () => {
     for (const id of CHARACTER_IDS) {
+      const own = CHARACTER_POSES[id];
       for (const m of MOODS) {
+        if (own) {
+          const cue = own[m];
+          for (const pose of typeof cue === 'string' ? [cue] : cue) expect(SPRITES[id].poses[pose], `${id}.${m} → ${pose}`).toBeDefined();
+        }
         const s = spriteFor(id, m);
-        expect(s.sprite.w).toBeGreaterThan(0);
-        expect(s.sprite.h).toBeGreaterThan(0);
+        expect(s.frames.length).toBeGreaterThan(0);
+        for (const f of s.frames) {
+          expect(f.sprite.w).toBeGreaterThan(0);
+          expect(f.sprite.h).toBeGreaterThan(0);
+        }
       }
     }
-    expect(spriteFor('globe', 'wave').pose).toBe('idle');
-    expect(spriteFor('lemon', 'wave').pose).toBe('wave');
+  });
+
+  it('у Глобуса и Карася свои позы и раскадровки', () => {
+    expect(Object.keys(SPRITES.globe.poses)).toHaveLength(8);
+    expect(Object.keys(SPRITES.fish.poses)).toHaveLength(6);
+    expect(spriteFor('globe', 'thinking').pose).toBe('laptop');
+    expect(spriteFor('globe', 'sleep').pose).toBe('yawn');
+    expect(spriteFor('fish', 'search').frames.map((f) => f.pose)).toEqual(['walk', 'run']);
+    expect(spriteFor('fish', 'idle').frames).toHaveLength(1);
   });
 
   it('реплики персонажей не повторяются между персонажами', () => {

@@ -1,12 +1,12 @@
 // Сгенерировано scripts/mascot-sprites.mjs из референсов `маскот/`. Не править вручную.
 import type { CharacterId } from '../characters';
 
-export type Pose = 'wave' | 'thumbs' | 'run' | 'sit' | 'think' | 'cheer';
+export type Pose = 'wave' | 'thumbs' | 'run' | 'sit' | 'think' | 'cheer' | 'walk' | 'hop' | 'kick' | 'stand' | 'laptop' | 'yawn' | 'coffee' | 'facepalm' | 'shrug' | 'crossed';
 export interface Sprite { src: string; w: number; h: number }
 export interface SpriteSet {
   /** Единиц viewBox на пиксель спрайта. */
   scale: number;
-  poses: Partial<Record<Pose | 'idle', Sprite>>;
+  poses: Partial<Record<Pose, Sprite>>;
 }
 
 import lemon_wave from './lemon/wave.webp';
@@ -33,8 +33,20 @@ import baller_run from './baller/run.webp';
 import baller_sit from './baller/sit.webp';
 import baller_think from './baller/think.webp';
 import baller_cheer from './baller/cheer.webp';
-import globe_idle from './globe/idle.webp';
-import fish_idle from './fish/idle.webp';
+import fish_walk from './fish/walk.webp';
+import fish_run from './fish/run.webp';
+import fish_hop from './fish/hop.webp';
+import fish_sit from './fish/sit.webp';
+import fish_kick from './fish/kick.webp';
+import fish_stand from './fish/stand.webp';
+import globe_laptop from './globe/laptop.webp';
+import globe_yawn from './globe/yawn.webp';
+import globe_coffee from './globe/coffee.webp';
+import globe_facepalm from './globe/facepalm.webp';
+import globe_shrug from './globe/shrug.webp';
+import globe_run from './globe/run.webp';
+import globe_thumbs from './globe/thumbs.webp';
+import globe_crossed from './globe/crossed.webp';
 
 export const SPRITES: Record<CharacterId, SpriteSet> = {
   lemon: {
@@ -81,16 +93,28 @@ export const SPRITES: Record<CharacterId, SpriteSet> = {
     cheer: { src: baller_cheer, w: 167, h: 336 },
     },
   },
-  globe: {
-    scale: 0.72,
+  fish: {
+    scale: 0.52,
     poses: {
-    idle: { src: globe_idle, w: 205, h: 221 },
+    walk: { src: fish_walk, w: 276, h: 281 },
+    run: { src: fish_run, w: 281, h: 294 },
+    hop: { src: fish_hop, w: 244, h: 314 },
+    sit: { src: fish_sit, w: 308, h: 239 },
+    kick: { src: fish_kick, w: 290, h: 298 },
+    stand: { src: fish_stand, w: 208, h: 306 },
     },
   },
-  fish: {
-    scale: 0.8,
+  globe: {
+    scale: 0.52,
     poses: {
-    idle: { src: fish_idle, w: 168, h: 169 },
+    laptop: { src: globe_laptop, w: 301, h: 235 },
+    yawn: { src: globe_yawn, w: 228, h: 295 },
+    coffee: { src: globe_coffee, w: 256, h: 275 },
+    facepalm: { src: globe_facepalm, w: 176, h: 318 },
+    shrug: { src: globe_shrug, w: 266, h: 302 },
+    run: { src: globe_run, w: 256, h: 298 },
+    thumbs: { src: globe_thumbs, w: 214, h: 313 },
+    crossed: { src: globe_crossed, w: 182, h: 321 },
     },
   },
 };

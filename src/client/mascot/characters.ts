@@ -26,7 +26,10 @@ export interface Character {
   };
 }
 
-/** Какая поза из листа стикеров соответствует настроению. */
+/** Поза или раскадровка — несколько поз по кругу (шаги, танец). */
+export type PoseCue = Pose | readonly Pose[];
+
+/** Какая поза из листа стикеров соответствует настроению (общий лист: машет, палец, бежит, сидит, думает, ликует). */
 export const POSE_FOR_MOOD: Record<Mood, Pose> = {
   idle: 'thumbs',
   thinking: 'think',
@@ -46,15 +49,61 @@ export const POSE_FOR_MOOD: Record<Mood, Pose> = {
   party: 'cheer',
 };
 
-/** Спрайт персонажа для настроения; если у персонажа одна поза — она на все случаи. */
-export function spriteFor(id: CharacterId, mood: Mood): { pose: Pose | 'idle'; sprite: Sprite; scale: number } {
+/** У Глобуса и Карася свои листы поз — у них своя раскладка по настроениям. */
+export const CHARACTER_POSES: Partial<Record<CharacterId, Record<Mood, PoseCue>>> = {
+  globe: {
+    idle: 'coffee',
+    thinking: 'laptop',
+    happy: 'thumbs',
+    sad: 'facepalm',
+    search: 'run',
+    sleep: 'yawn',
+    love: 'coffee',
+    surprised: 'shrug',
+    wink: 'thumbs',
+    cool: 'crossed',
+    grumpy: 'crossed',
+    shy: 'facepalm',
+    laugh: 'shrug',
+    dizzy: 'facepalm',
+    wave: 'shrug',
+    party: ['thumbs', 'shrug'],
+  },
+  fish: {
+    idle: 'stand',
+    thinking: 'walk',
+    happy: 'hop',
+    sad: 'sit',
+    search: ['walk', 'run'],
+    sleep: 'sit',
+    love: 'hop',
+    surprised: 'hop',
+    wink: 'stand',
+    cool: 'stand',
+    grumpy: 'kick',
+    shy: 'walk',
+    laugh: 'hop',
+    dizzy: 'sit',
+    wave: 'kick',
+    party: ['hop', 'kick'],
+  },
+};
+
+/** Позы персонажа для настроения; поза, которой у персонажа нет, заменяется первой из его листа. */
+export function spriteFor(id: CharacterId, mood: Mood): { pose: Pose; sprite: Sprite; frames: { pose: Pose; sprite: Sprite }[]; scale: number } {
   const set = SPRITES[id];
-  const wanted = POSE_FOR_MOOD[mood];
-  const fromPose = set.poses[wanted];
-  if (fromPose) return { pose: wanted, sprite: fromPose, scale: set.scale };
-  const idle = set.poses.idle ?? Object.values(set.poses)[0];
-  if (!idle) throw new Error(`Нет спрайтов для персонажа ${id}`);
-  return { pose: 'idle', sprite: idle, scale: set.scale };
+  const cue = CHARACTER_POSES[id]?.[mood] ?? POSE_FOR_MOOD[mood];
+  const frames = (typeof cue === 'string' ? [cue] : cue).flatMap((pose) => {
+    const sprite = set.poses[pose];
+    return sprite ? [{ pose, sprite }] : [];
+  });
+  if (!frames.length) {
+    const [pose, sprite] = Object.entries(set.poses)[0] ?? [];
+    if (!pose || !sprite) throw new Error(`Нет спрайтов для персонажа ${id}`);
+    frames.push({ pose: pose as Pose, sprite });
+  }
+  const [first] = frames as [{ pose: Pose; sprite: Sprite }];
+  return { pose: first.pose, sprite: first.sprite, frames, scale: set.scale };
 }
 
 export const CHARACTERS: Record<CharacterId, Character> = {

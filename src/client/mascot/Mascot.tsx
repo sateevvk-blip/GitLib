@@ -106,15 +106,15 @@ function Props_({ mood }: { mood: Mood }) {
 
 /**
  * Маскот — стикер из референса `маскот/`, вырезанный скриптом `scripts/mascot-sprites.mjs`.
- * Поза берётся по настроению, реквизит и движения тела — общие для всех персонажей.
+ * Поза берётся по настроению, реквизит и движения тела — общие для всех персонажей;
+ * у Глобуса и Карася у поз есть собственные движения (CSS `.mascot[data-pose] .m-act`).
  */
 export function Mascot({ mood, size = 120, className, character }: Props) {
   const chosen = useCharacter();
   const id = character ?? chosen;
   const ch = CHARACTERS[id];
-  const { pose, sprite, scale } = spriteFor(id, mood);
+  const { pose, sprite, frames, scale } = spriteFor(id, mood);
   const w = sprite.w * scale;
-  const h = sprite.h * scale;
 
   return (
     <svg
@@ -122,6 +122,7 @@ export function Mascot({ mood, size = 120, className, character }: Props) {
       data-mood={mood}
       data-character={id}
       data-pose={pose}
+      data-frames={frames.length}
       viewBox="0 0 160 190"
       width={size}
       height={(size * 190) / 160}
@@ -130,7 +131,14 @@ export function Mascot({ mood, size = 120, className, character }: Props) {
     >
       <ellipse className="m-shadow" cx="80" cy={BASELINE + 3} rx={Math.min(54, w * 0.38)} ry="4.5" fill={INK} opacity="0.12" />
       <g className="m-body">
-        <image key={pose} className="m-sprite" href={sprite.src} x={80 - w / 2} y={BASELINE - h} width={w} height={h} preserveAspectRatio="xMidYMax meet" />
+        {/* m-act — движение самой позы (печатает, шагает, прыгает); несколько кадров сменяют друг друга по кругу */}
+        <g className="m-act" key={frames.map((f) => f.pose).join('+')}>
+          {frames.map((f) => {
+            const fw = f.sprite.w * scale;
+            const fh = f.sprite.h * scale;
+            return <image key={f.pose} className="m-sprite" href={f.sprite.src} x={80 - fw / 2} y={BASELINE - fh} width={fw} height={fh} preserveAspectRatio="xMidYMax meet" />;
+          })}
+        </g>
       </g>
       <Props_ mood={mood} />
     </svg>
