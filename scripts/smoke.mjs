@@ -85,6 +85,9 @@ try {
 } catch (e) {
   check('smoke', false, e instanceof Error ? e.message : String(e));
 } finally {
+  // GitLib.exe (значок в трее) запускает gitlib-server отдельным процессом: child.kill() снял бы только значок,
+  // а сервер остался бы работать. Поэтому сначала просим сервер выключиться через API, как это делает сам значок.
+  check('сервер остановлен по /api/shutdown', await stopServer());
   child.kill();
   await new Promise((r) => setTimeout(r, 300));
   try {
@@ -92,6 +95,25 @@ try {
   } catch {
     /* на Windows файл может быть ещё занят — не критично */
   }
+}
+
+/** POST /api/shutdown и ожидание, пока сервер перестанет отвечать (до 5 с). */
+async function stopServer() {
+  try {
+    const res = await fetch(`${base}/api/shutdown`, { method: 'POST', headers: { 'X-GitLib-Shutdown': '1' } });
+    if (res.status !== 202) return false;
+  } catch {
+    return false;
+  }
+  for (let i = 0; i < 50; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    try {
+      await fetch(`${base}/api/health`);
+    } catch {
+      return true;
+    }
+  }
+  return false;
 }
 
 const failed = checks.filter((c) => !c.ok);
