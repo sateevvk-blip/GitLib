@@ -19,11 +19,11 @@ jobs:
       - run: npm ci
       - run: npm run bundle:app -- --target win-x64
       - shell: bash
-        run: node scripts/smoke.mjs --exe release/gitlib-*-windows-x64/gitlib-server.exe
+        run: node scripts/smoke.mjs --exe release/*/gitlib-*-windows-x64/gitlib-server.exe
       - uses: actions/upload-artifact@v4
         with:
           name: gitlib-windows
-          path: release/*.zip
+          path: release/*/*.zip
 
   macos:
     runs-on: macos-latest
@@ -35,11 +35,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run bundle:app -- --target darwin-arm64,darwin-x64
-      - run: node scripts/smoke.mjs --exe release/gitlib-*-macos-arm64/GitLib.app/Contents/Resources/gitlib-server
+      - run: node scripts/smoke.mjs --exe release/*/gitlib-*-macos-arm64/GitLib.app/Contents/Resources/gitlib-server
       - uses: actions/upload-artifact@v4
         with:
           name: gitlib-macos
-          path: release/*.zip
+          path: release/*/*.zip
 
   smoke-macos-intel:
     needs: macos

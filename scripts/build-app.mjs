@@ -8,7 +8,8 @@
  *
  * Рядом с сервером кладётся значок в трее: на Windows — GitLib.exe (C#, собирается встроенным в Windows csc.exe),
  * на macOS — GitLib.app со значком в строке меню (Swift, swiftc). Поэтому каждая платформа собирается на своей ОС;
- * macOS-бинарник к тому же нужно заново подписать (`codesign`). Результат — release/gitlib-<версия>-<платформа>.zip.
+ * macOS-бинарник к тому же нужно заново подписать (`codesign`). Результат — release/<версия>/gitlib-<версия>-<платформа>.zip;
+ * папка версии не перезаписывает папки прошлых релизов, кэш бинарников Node и рабочая папка — общие, в release/.
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -22,9 +23,11 @@ import { writeZip } from './lib/zip.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const templates = path.join(root, 'scripts', 'app');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const releaseDir = path.join(root, 'release');
-const workDir = path.join(releaseDir, '.app-build');
-const cacheDir = path.join(releaseDir, '.node-cache');
+const releaseRoot = path.join(root, 'release');
+/** Артефакты каждого выпуска — в своей подпапке с номером версии (.claude/rules/release.md). */
+const releaseDir = path.join(releaseRoot, pkg.version);
+const workDir = path.join(releaseRoot, '.app-build');
+const cacheDir = path.join(releaseRoot, '.node-cache');
 const nodeVersion = process.version;
 const SENTINEL = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2';
 

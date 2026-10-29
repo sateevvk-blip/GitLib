@@ -4,7 +4,7 @@
  * отдачу клиента, API и валидацию, затем останавливает процесс.
  *
  *   npm run build && npm run smoke
- *   npm run smoke -- --exe release/gitlib-<версия>-windows-x64/GitLib.exe   # собранный GitLib.exe / gitlib-server
+ *   npm run smoke -- --exe release/<версия>/gitlib-<версия>-windows-x64/GitLib.exe   # собранный GitLib.exe / gitlib-server
  */
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';

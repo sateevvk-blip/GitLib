@@ -2,7 +2,7 @@
  * Упаковка GitLib в переносимый архив для друзей и коллег:
  * production-сборка + серверные зависимости + скрипты запуска. Получателю нужен только Node.js 22.13+.
  *
- *   npm run bundle                 # сборка и архив release/gitlib-<версия>.zip
+ *   npm run bundle                 # сборка и архив release/<версия>/gitlib-<версия>.zip
  *   npm run bundle -- --skip-build # упаковать уже собранный dist/
  */
 import { spawnSync } from 'node:child_process';
@@ -15,7 +15,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const templates = path.join(root, 'scripts', 'bundle');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const name = `gitlib-${pkg.version}`;
-const releaseDir = path.join(root, 'release');
+/** Артефакты каждого выпуска — в своей подпапке с номером версии (.claude/rules/release.md). */
+const releaseDir = path.join(root, 'release', pkg.version);
 const outDir = path.join(releaseDir, name);
 const zipPath = path.join(releaseDir, `${name}.zip`);
 

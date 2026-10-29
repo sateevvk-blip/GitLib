@@ -126,11 +126,11 @@ npm run dev
 | `npm test` | тесты (Vitest) |
 | `npm run typecheck` | проверка типов сервера и клиента |
 | `npm run smoke` | smoke-проверка production-сборки во временной папке без сети |
-| `npm run bundle` | переносимый архив `release/gitlib-<версия>.zip` для друзей и коллег |
+| `npm run bundle` | переносимый архив `release/<версия>/gitlib-<версия>.zip` для друзей и коллег |
 
 ## Поделиться приложением
 
-`npm run bundle` собирает production-версию и упаковывает её в `release/gitlib-<версия>.zip` (≈6 МБ):
+`npm run bundle` собирает production-версию и упаковывает её в `release/<версия>/gitlib-<версия>.zip` (≈6 МБ; у каждого выпуска своя подпапка, прошлые не перезаписываются):
 собранный клиент и сервер, серверные зависимости (`node_modules` уже внутри, без тестов и примеров),
 скрипты запуска и `README.md` с инструкцией для получателя. Получателю нужен только Node.js 22.13+:
 распаковать и запустить `GitLib.cmd` (Windows), `GitLib.command` (macOS) или `sh gitlib.sh` (Linux) —
