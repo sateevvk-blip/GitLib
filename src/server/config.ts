@@ -22,7 +22,7 @@ export const config = {
   settingsPath: path.join(dataDir, 'settings.json'),
   /** Собранный клиент (dist/client). В dev-режиме отсутствует — используется Vite. GitLib.exe распаковывает свой. */
   clientDir: process.env.GITLIB_CLIENT_DIR?.trim() ? path.resolve(process.env.GITLIB_CLIENT_DIR) : path.resolve(here, '..', 'client'),
-  appVersion: '1.0.0',
+  appVersion: '1.1.0',
   /** Максимальный размер README, сохраняемого локально (символов). */
   readmeMaxChars: 200_000,
   /** Сколько символов README отдаётся модели. */
