@@ -11,6 +11,16 @@ export default defineConfig({
     outDir: fileURLToPath(new URL('./dist/client', import.meta.url)),
     emptyOutDir: true,
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        // Библиотеки — отдельными чанками: меняются редко, кэшируются по хэшу, основной файл остаётся меньше 500 КБ.
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+          markdown: ['marked', 'dompurify'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
   },
   server: {
     port: 5173,
