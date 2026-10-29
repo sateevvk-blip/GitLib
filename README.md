@@ -145,8 +145,7 @@ src/shared/    типы, нормализация ввода, поиск и фа
 src/server/    Fastify: маршруты, сервис библиотеки, SQLite-хранилище, GitHub-клиент, AI-анализатор, экспорт/импорт
 src/client/    React: страницы, компоненты, маскот, API-хуки, стили
 tests/         Vitest: нормализация и дедупликация, поиск с кириллицей, сохранность данных, экспорт/импорт, REST API
-scripts/       smoke.mjs, mock-llm.mjs
-.claude/       обвязка для Claude Code: правила, агенты, навыки, конфигурация запуска
+scripts/       smoke.mjs, mock-llm.mjs, pack.mjs и build-app.mjs (сборки), шаблоны лаунчеров и значка в трее
 .github/       CI: typecheck, тесты, сборка, smoke на Linux и Windows
 ```
 
@@ -164,9 +163,3 @@ scripts/       smoke.mjs, mock-llm.mjs
 - Встроенный `node:sqlite` помечен в Node 22 как экспериментальный; предупреждение подавляется флагом в `npm start`.
 - Поиск — подстрочный по словам (все слова должны встретиться), без морфологии и опечаток.
 - Приватные репозитории доступны только с токеном, у которого есть к ним доступ.
-
-## Обвязка для Claude Code
-
-`CLAUDE.md` описывает архитектуру и инварианты; `.claude/rules/` — правила по областям кода; `.claude/agents/` — агенты
-`gitlib-reviewer`, `gitlib-qa`, `gitlib-ux`; `.claude/skills/` — навыки `gitlib-feature`, `gitlib-release`, `gitlib-run`;
-`.claude/launch.json` — конфигурации запуска для встроенного браузера. Все изменения фиксируются в `CHANGELOG.md`.

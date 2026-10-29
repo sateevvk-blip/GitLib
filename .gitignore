@@ -6,3 +6,13 @@ data/
 .DS_Store
 scripts/.smoke-data/
 release/
+
+# Не для публичного репозитория: референсы, эксперименты, лендинги и обвязка Claude Code остаются только локально
+маскот/
+дизайн/
+иконки/
+mascot-3d/
+docs/
+.claude/
+CLAUDE.md
+graphify-out/
