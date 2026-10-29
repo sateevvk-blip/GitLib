@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export function openDatabase(dbPath: string): DatabaseSync {
   if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -47,9 +47,30 @@ function migrate(db: DatabaseSync): void {
       position INTEGER NOT NULL DEFAULT 0,
       PRIMARY KEY (collection_id, repo_id)
     );
+    -- Кэш содержимого репозитория для чата: структура и прочитанные файлы. Не пользовательские данные, в экспорт не попадает.
+    CREATE TABLE IF NOT EXISTS repo_trees (
+      repo_id TEXT PRIMARY KEY REFERENCES repos(id) ON DELETE CASCADE,
+      tree_sha TEXT NOT NULL,
+      branch TEXT NOT NULL,
+      truncated INTEGER NOT NULL DEFAULT 0,
+      pushed_at TEXT,
+      entries_json TEXT NOT NULL,
+      fetched_at TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS repo_files (
+      repo_id TEXT NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+      path TEXT NOT NULL,
+      sha TEXT NOT NULL,
+      content TEXT NOT NULL,
+      fetched_at TEXT NOT NULL,
+      PRIMARY KEY (repo_id, path)
+    );
   `);
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get('schema_version') as { value: string } | undefined;
   if (!row) {
     db.prepare('INSERT INTO meta(key, value) VALUES (?, ?)').run('schema_version', String(SCHEMA_VERSION));
+  } else if (Number(row.value) < SCHEMA_VERSION) {
+    // Все таблицы создаются через IF NOT EXISTS — достаточно поднять номер.
+    db.prepare('UPDATE meta SET value = ? WHERE key = ?').run(String(SCHEMA_VERSION), 'schema_version');
   }
 }

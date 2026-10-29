@@ -128,17 +128,25 @@ export interface UserPatch {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Файлы репозитория, которые модель прочитала перед ответом (только у ответов). */
+  sources?: string[];
 }
 
 export interface ChatReply {
   reply: string;
   model: string;
+  /** Пути файлов репозитория, попавших в контекст ответа. */
+  sources: string[];
+  /** Предупреждение о неполном контексте (GitHub недоступен, лимит запросов…). */
+  notice: string | null;
 }
 
 /** Сколько последних сообщений истории уходит модели (вместе с новым вопросом). */
 export const CHAT_HISTORY_LIMIT = 20;
 /** Максимальная длина одного сообщения чата, символов. */
 export const CHAT_MESSAGE_MAX_CHARS = 4000;
+/** Сколько файлов репозитория модель может прочитать для одного ответа. */
+export const CHAT_MAX_FILES = 8;
 
 export interface Settings {
   githubToken: string;

@@ -5,7 +5,10 @@ import { applyAnalysis, applyGithubRefresh, applyUserPatch, emptyAnalysis, newUs
 import type { LibraryStore } from './store.js';
 import type { SettingsStore } from '../settings.js';
 import { downloadAvatar, fetchRepository } from '../github/client.js';
-import { analyzeRepo, chatAboutRepo } from '../ai/analyzer.js';
+import { analyzeRepo, chatAboutRepo, selectChatFiles } from '../ai/analyzer.js';
+import { rankFiles, readableEntries, type ChatContext } from '../ai/context.js';
+import { RepoContents, githubContentSource, type ContentSource } from './contents.js';
+import { config } from '../config.js';
 import { DuplicateError, NotFoundError, ValidationError } from '../errors.js';
 
 export interface ServiceDeps {
@@ -13,7 +16,9 @@ export interface ServiceDeps {
   settings: SettingsStore;
   /** Подменяются в тестах. */
   github?: { fetchRepository: typeof fetchRepository; downloadAvatar: typeof downloadAvatar };
-  ai?: { analyzeRepo: typeof analyzeRepo; chatAboutRepo?: typeof chatAboutRepo };
+  ai?: { analyzeRepo: typeof analyzeRepo; chatAboutRepo?: typeof chatAboutRepo; selectChatFiles?: typeof selectChatFiles };
+  /** Источник структуры и файлов репозитория для чата; подменяется в тестах. */
+  contents?: ContentSource;
   log?: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 }
 
@@ -25,7 +30,8 @@ export class LibraryService {
   private readonly store: LibraryStore;
   private readonly settings: SettingsStore;
   private readonly github: NonNullable<ServiceDeps['github']>;
-  private readonly ai: { analyzeRepo: typeof analyzeRepo; chatAboutRepo: typeof chatAboutRepo };
+  private readonly ai: { analyzeRepo: typeof analyzeRepo; chatAboutRepo: typeof chatAboutRepo; selectChatFiles: typeof selectChatFiles };
+  private readonly contents: RepoContents;
   private readonly log: NonNullable<ServiceDeps['log']>;
   private readonly queue: string[] = [];
   private readonly queued = new Set<string>();
@@ -35,8 +41,18 @@ export class LibraryService {
     this.store = deps.store;
     this.settings = deps.settings;
     this.github = deps.github ?? { fetchRepository, downloadAvatar };
-    this.ai = { analyzeRepo: deps.ai?.analyzeRepo ?? analyzeRepo, chatAboutRepo: deps.ai?.chatAboutRepo ?? chatAboutRepo };
+    this.ai = {
+      analyzeRepo: deps.ai?.analyzeRepo ?? analyzeRepo,
+      chatAboutRepo: deps.ai?.chatAboutRepo ?? chatAboutRepo,
+      selectChatFiles: deps.ai?.selectChatFiles ?? selectChatFiles,
+    };
     this.log = deps.log ?? { info: () => {}, warn: () => {}, error: () => {} };
+    this.contents = new RepoContents({
+      store: this.store,
+      source: deps.contents ?? githubContentSource,
+      token: () => this.settings.get().githubToken,
+      log: this.log,
+    });
   }
 
   // ---------- чтение ----------
@@ -168,7 +184,8 @@ export class LibraryService {
 
   /**
    * Уточняющий вопрос о репозитории. История приходит с клиента и нигде не сохраняется;
-   * запись в библиотеке не меняется.
+   * запись в библиотеке не меняется. Перед ответом модель выбирает файлы репозитория,
+   * которые стоит прочитать (структура и файлы кэшируются в SQLite).
    */
   async chat(id: string, history: ChatMessage[]): Promise<ChatReply> {
     const repo = this.get(id);
@@ -179,7 +196,30 @@ export class LibraryService {
     if (!last || last.role !== 'user' || !last.content.trim()) {
       throw new ValidationError('Последнее сообщение должно быть вопросом пользователя');
     }
-    return this.ai.chatAboutRepo(repo, this.settings.get(), history);
+    const settings = this.settings.get();
+    const ctx = await this.collectChatContext(repo, history);
+    const answer = await this.ai.chatAboutRepo(repo, settings, history, ctx);
+    return { reply: answer.reply, model: answer.model, sources: ctx.files.map((f) => f.path), notice: ctx.notes.length ? ctx.notes.join(' ') : null };
+  }
+
+  /** Структура репозитория и файлы под вопрос: кандидаты по ключевым словам, выбор — за моделью, запасной вариант — эвристика. */
+  private async collectChatContext(repo: Repo, history: ChatMessage[]): Promise<ChatContext> {
+    const notes: string[] = [];
+    const tree = await this.contents.getTree(repo, notes);
+    if (!tree) return { tree: null, files: [], notes };
+    const question = history[history.length - 1]?.content ?? '';
+    const candidates = rankFiles(readableEntries(tree), question, config.chatMaxFiles * 2);
+    let chosen: string[];
+    try {
+      chosen = await this.ai.selectChatFiles(repo, this.settings.get(), history, tree, candidates);
+    } catch (e) {
+      this.log.warn(`Чат: модель не выбрала файлы для ${repo.fullName} (${e instanceof Error ? e.message : String(e)}), беру по ключевым словам`);
+      chosen = candidates.slice(0, config.chatMaxFiles).map((c) => c.path);
+    }
+    // Модель может решить, что файлы не нужны; пара самых релевантных всё же не помешает.
+    if (chosen.length === 0) chosen = candidates.slice(0, 3).map((c) => c.path);
+    const files = await this.contents.getFiles(repo, tree, chosen, notes);
+    return { tree, files, notes };
   }
 
   /** После перезапуска: незавершённые анализы ставятся в очередь заново или сбрасываются. */

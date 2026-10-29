@@ -44,7 +44,7 @@ const PatchBody = z
 const ChatBody = z
   .object({
     messages: z
-      .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(CHAT_MESSAGE_MAX_CHARS) }).strict())
+      .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(CHAT_MESSAGE_MAX_CHARS), sources: z.array(z.string().max(500)).max(50).optional() }).strict())
       .min(1, 'Нужен хотя бы один вопрос')
       .max(CHAT_HISTORY_LIMIT * 2),
   })

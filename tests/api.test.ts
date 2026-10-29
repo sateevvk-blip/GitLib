@@ -30,7 +30,12 @@ beforeAll(async () => {
         analyzeCalls += 1;
         return { status: 'done', summary: 'Сводка', useCases: ['Бэкап'], suggestedTopics: ['backup'], model: 'mock', generatedAt: new Date().toISOString(), error: null };
       },
-      chatAboutRepo: async (repo, _settings, messages) => ({ reply: `Про ${repo.fullName}: ${messages[messages.length - 1]?.content}`, model: 'mock' }),
+      chatAboutRepo: async (repo, _settings, messages, ctx) => ({ reply: `Про ${repo.fullName}: ${messages[messages.length - 1]?.content} [${ctx?.files.map((f) => f.path).join(',')}]`, model: 'mock' }),
+      selectChatFiles: async () => ['docs/usage.md'],
+    },
+    contents: {
+      fetchTree: async () => ({ sha: 't1', truncated: false, entries: [{ path: 'docs/usage.md', type: 'blob', sha: 'b1', size: 10 }] }),
+      fetchBlob: async () => '# Usage',
     },
   });
   ({ app } = buildApp({ dataDir, dbPath: path.join(dataDir, 'gitlib.sqlite'), settingsPath: path.join(dataDir, 'settings.json'), store, settings, service }));
@@ -96,7 +101,9 @@ describe('REST API', () => {
   it('POST /chat отвечает на вопрос о репозитории и проверяет тело', async () => {
     const res = await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [{ role: 'user', content: 'Как установить?' }] } });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ reply: 'Про Octo/Backup-Tool: Как установить?', model: 'mock' });
+    expect(res.json()).toEqual({ reply: 'Про Octo/Backup-Tool: Как установить? [docs/usage.md]', model: 'mock', sources: ['docs/usage.md'], notice: null });
+    const withSources = await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [{ role: 'user', content: 'Как установить?' }, { role: 'assistant', content: 'Так', sources: ['docs/usage.md'] }, { role: 'user', content: 'А дальше?' }] } });
+    expect(withSources.statusCode).toBe(200);
     expect((await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [] } })).statusCode).toBe(400);
     expect((await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [{ role: 'system', content: 'x' }] } })).statusCode).toBe(400);
     expect((await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [{ role: 'assistant', content: 'x' }] } })).statusCode).toBe(400);
