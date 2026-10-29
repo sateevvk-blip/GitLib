@@ -29,13 +29,24 @@ const server = http.createServer((req, res) => {
         return;
       }
       let repoName = 'проект';
+      let chatQuestion = null;
       try {
         const body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-        const user = body.messages?.find((m) => m.role === 'user')?.content ?? '';
+        const messages = body.messages ?? [];
+        const user = messages.find((m) => m.role === 'user')?.content ?? '';
         const m = user.match(/Репозиторий:\s*(\S+)/);
         if (m) repoName = m[1];
+        // Чат о репозитории: без response_format, последнее сообщение — вопрос пользователя.
+        const last = messages[messages.length - 1];
+        if (!body.response_format && messages.length > 3 && last?.role === 'user') chatQuestion = last.content;
       } catch {
         /* ignore */
+      }
+      if (chatQuestion !== null) {
+        const reply = `Мок-ответ про **${repoName}** на вопрос «${chatQuestion.slice(0, 80)}».\n\nПо README: это демонстрационный проект, запускается командой:\n\n\`\`\`bash\nnpm install && npm start\n\`\`\`\n\nДеталей в данных нет — посмотрите папку \`docs/\` в репозитории.`;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ id: 'chatcmpl-mock', object: 'chat.completion', model: 'mock-1', choices: [{ index: 0, message: { role: 'assistant', content: reply }, finish_reason: 'stop' }] }));
+        return;
       }
       const content = JSON.stringify({
         summary: `${repoName} — демонстрационная сводка от мок-модели. Это инструмент, который решает конкретную задачу разработчика и активно поддерживается.\n\nПодходит, когда нужен готовый и проверенный компонент вместо самописного.`,

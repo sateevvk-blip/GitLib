@@ -32,6 +32,9 @@ import { compactNumber, formatDate, formatDateTime, fullNumber, languageColor, r
 import { toast, errorMessage } from '../lib/toast';
 import { useOnline } from '../lib/online';
 import { hold, phrases, react, release, setAmbient } from '../mascot/store';
+import { setChatTarget } from '../mascot/chat';
+
+const CHAT_INVITED_KEY = 'gitlib.chat.invited';
 
 export function RepoPage() {
   const { id } = useParams<{ id: string }>();
@@ -54,6 +57,33 @@ export function RepoPage() {
   useEffect(() => {
     setAmbient('idle', null);
   }, []);
+
+  // Маскот знает, о каком репозитории можно спросить. Зависимости — примитивы: обновление записи
+  // (заметка, звёздочка, фоновый анализ) не должно закрывать открытый чат; уход со страницы — закрывает.
+  const llmReady = settings.data?.llmConfigured ?? false;
+  const chatId = repo?.id;
+  const chatName = repo?.fullName;
+  const chatUrl = repo?.github.htmlUrl;
+  const chatBranch = repo?.github.defaultBranch;
+  const chatHasReadme = Boolean(repo?.github.readme);
+  useEffect(() => {
+    if (!chatId || !chatName || !chatUrl || !chatBranch) return;
+    setChatTarget({ id: chatId, fullName: chatName, htmlUrl: chatUrl, branch: chatBranch, hasReadme: chatHasReadme });
+  }, [chatId, chatName, chatUrl, chatBranch, chatHasReadme]);
+  useEffect(() => () => setChatTarget(null), []);
+
+  // Один раз за сессию подсказываем, что маскоту можно задать вопрос.
+  useEffect(() => {
+    if (!repo || !llmReady) return;
+    try {
+      if (sessionStorage.getItem(CHAT_INVITED_KEY) === '1') return;
+      sessionStorage.setItem(CHAT_INVITED_KEY, '1');
+    } catch {
+      return;
+    }
+    const t = setTimeout(() => react('wink', phrases.chatInvite, 6000), 900);
+    return () => clearTimeout(t);
+  }, [repo, llmReady]);
 
   // Реакция маскота на завершение фонового анализа
   useEffect(() => {

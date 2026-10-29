@@ -4,6 +4,8 @@ import { Mascot } from './Mascot';
 import { peek, phrases, pick, react, setAmbient, timeGreeting, useMascot } from './store';
 import { CHARACTERS } from './characters';
 import { hasChosenCharacter, useCharacter } from './choice';
+import { toggleChat, useChat } from './chat';
+import { RepoChat } from './RepoChat';
 import { useOnline } from '../lib/online';
 import { usePresence } from '../lib/motion';
 import { afterIntro } from '../intro/gate';
@@ -18,11 +20,21 @@ export function MascotDock() {
   // Реплика доигрывает уход после того, как стор вернулся в покой.
   const { shown: bubble, leaving } = usePresence(mascot.message ? mascot : null, '--dur-quick');
   const online = useOnline();
+  const chat = useChat();
   const characterId = useCharacter();
   const character = CHARACTERS[characterId];
   const taps = useRef<number[]>([]);
   const dozing = useRef(false);
   const prevOnline = useRef(online);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const chatOpen = chat.open && chat.target !== null;
+  const prevChatOpen = useRef(chatOpen);
+
+  // Чат закрылся (Esc, крестик, уход со страницы) — фокус возвращается на кнопку маскота.
+  useEffect(() => {
+    if (prevChatOpen.current && !chatOpen) buttonRef.current?.focus();
+    prevChatOpen.current = chatOpen;
+  }, [chatOpen]);
 
   // Приветствие один раз за сессию; при первом запуске — подсказка, что напарника можно выбрать.
   useEffect(() => {
@@ -86,6 +98,12 @@ export function MascotDock() {
   }, [character]);
 
   const onTap = () => {
+    // На странице репозитория клик открывает чат о нём вместо обычной реплики.
+    if (chat.target) {
+      if (chat.open) react('wave', phrases.chatClosed, 2000);
+      toggleChat();
+      return;
+    }
     const now = Date.now();
     taps.current = taps.current.filter((ts) => now - ts < 1600);
     taps.current.push(now);
@@ -102,10 +120,13 @@ export function MascotDock() {
     }
   };
 
+  const title = chat.target ? (chatOpen ? 'Закрыть чат' : `Спросить ${character.name} про ${chat.target.fullName}`) : `${character.name} — твой напарник`;
+
   return (
-    <div className="mascot-dock" aria-live="polite">
-      {bubble?.message && (
-        <div className={`mascot-bubble${leaving ? ' is-leaving' : ''}`} key={bubble.message}>
+    <div className="mascot-dock">
+      {chatOpen && chat.target && <RepoChat key={chat.target.id} target={chat.target} />}
+      {bubble?.message && !chatOpen && (
+        <div className={`mascot-bubble${leaving ? ' is-leaving' : ''}`} key={bubble.message} aria-live="polite">
           <span>{bubble.message}</span>
           {bubble.link && (
             <Link className="mascot-bubble-link" to={bubble.link.to}>
@@ -114,8 +135,13 @@ export function MascotDock() {
           )}
         </div>
       )}
-      <button type="button" className="mascot-button" title={`${character.name} — твой напарник`} onClick={onTap}>
+      <button ref={buttonRef} type="button" className={`mascot-button${chatOpen ? ' is-chatting' : ''}`} title={title} aria-expanded={chat.target ? chatOpen : undefined} onClick={onTap}>
         <Mascot mood={mood} size={104} />
+        {chat.target && !chatOpen && (
+          <span className="mascot-badge" aria-hidden="true">
+            ?
+          </span>
+        )}
       </button>
     </div>
   );

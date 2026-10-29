@@ -21,6 +21,13 @@ const IDLE: MascotState = { mood: 'idle', message: null, link: null, sticky: fal
 let state: MascotState = IDLE;
 let timer: ReturnType<typeof setTimeout> | null = null;
 const listeners = new Set<() => void>();
+/** Долгие состояния по ключам: страница держит анализ, чат — ожидание ответа; снятие одного не сбрасывает другое. */
+const holds = new Map<string, { mood: Mood; message: string | null }>();
+
+function idleOrHold(): MascotState {
+  const last = [...holds.values()].pop();
+  return last ? { mood: last.mood, message: last.message, link: null, sticky: true } : IDLE;
+}
 
 function set(next: MascotState): void {
   state = next;
@@ -42,20 +49,24 @@ export function react(mood: Mood, message?: string | readonly string[], ms = 400
   set({ mood, message: text(message), link: link ?? null, sticky: false });
   timer = setTimeout(() => {
     timer = null;
-    set(IDLE);
+    set(idleOrHold());
   }, ms);
 }
 
-/** Долгое состояние (загрузка, анализ) — держится до release(). */
-export function hold(mood: Mood, message?: string | readonly string[]): void {
+/** Долгое состояние (загрузка, анализ) — держится до release() с тем же ключом. */
+export function hold(mood: Mood, message?: string | readonly string[], key = 'main'): void {
   if (timer) clearTimeout(timer);
   timer = null;
-  set({ mood, message: text(message), link: null, sticky: true });
+  holds.delete(key);
+  holds.set(key, { mood, message: text(message) });
+  set(idleOrHold());
 }
 
-export function release(): void {
+/** Снимает удержание; если другие ключи ещё держат маскота — остаётся последнее из них. */
+export function release(key = 'main'): void {
+  holds.delete(key);
   if (!state.sticky) return;
-  set(IDLE);
+  set(idleOrHold());
 }
 
 /** Фоновое настроение (пустая библиотека → спит), не перебивает активные реакции. */
@@ -138,5 +149,13 @@ export const phrases = {
   probeOk: ['Подключение есть!', 'Отвечает. Всё хорошо.'],
   probeFailed: ['Не отвечает. Проверь адрес и ключ.', 'Тишина на линии.'],
   wake: ['А? Я не сплю!', 'Проснулся. Что я пропустил?'],
+  chatInvite: 'Есть вопросы по этому репозиторию? Нажми на меня — поболтаем.',
+  chatWelcome: (name: string, hasReadme: boolean) =>
+    hasReadme ? `Я прочитал README ${name}. Спрашивай — отвечу по делу.` : `README у ${name} нет — отвечу по описанию, темам и языкам. Спрашивай.`,
+  chatThinking: ['Думаю над ответом…', 'Листаю README…', 'Ищу в описании…'],
+  chatReplied: ['Вот что нашёл.', 'Ответил. Ещё вопросы?', 'Держи.'],
+  chatFailed: ['Не смог ответить. Попробуй ещё раз.', 'Модель молчит. Повтори позже.'],
+  chatClosed: ['Если что — я тут.', 'Зови, если будут вопросы.'],
+  chatNoLlm: 'Чтобы отвечать на вопросы, мне нужна модель. Настрой LLM в настройках.',
   notFound: ['Такой страницы нет. Точно.', 'Я тут всё обыскал — пусто.'],
 } as const;

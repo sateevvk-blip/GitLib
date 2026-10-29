@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import type { AnalysisData, Repo, Settings } from '../../shared/types.js';
+import type { AnalysisData, ChatMessage, ChatReply, Repo, Settings } from '../../shared/types.js';
+import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_CHARS } from '../../shared/types.js';
 import { LlmError } from '../errors.js';
 import { config } from '../config.js';
 
@@ -84,11 +85,11 @@ function contentToString(content: ChatContent): string {
   return '';
 }
 
-async function chatCompletion(settings: Settings, messages: Array<{ role: string; content: string }>, useJsonMode: boolean): Promise<string> {
+async function chatCompletion(settings: Settings, messages: Array<{ role: string; content: string }>, useJsonMode: boolean, temperature = 0.3): Promise<string> {
   const body: Record<string, unknown> = {
     model: settings.llmModel,
     messages,
-    temperature: 0.3,
+    temperature,
   };
   if (useJsonMode) body.response_format = { type: 'json_object' };
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -120,7 +121,7 @@ async function chatCompletion(settings: Settings, messages: Array<{ role: string
       /* оставляем сырой текст */
     }
     if (useJsonMode && res.status === 400 && /response_format|json_object|json mode/i.test(msg)) {
-      return chatCompletion(settings, messages, false);
+      return chatCompletion(settings, messages, false, temperature);
     }
     if (res.status === 401) throw new LlmError('LLM отклонила ключ API (401)', 'llm_unauthorized');
     if (res.status === 404) throw new LlmError(`Эндпоинт или модель не найдены (404): ${msg}`, 'llm_not_found');
@@ -164,6 +165,39 @@ export async function analyzeRepo(repo: Repo, settings: Settings): Promise<Analy
     generatedAt: new Date().toISOString(),
     error: null,
   };
+}
+
+const CHAT_SYSTEM_PROMPT = `Ты — технический библиотекарь GitLib, напарник разработчика. Пользователь открыл карточку GitHub-репозитория и задаёт уточняющие вопросы о нём.
+Ниже — данные репозитория (метаданные, README, при наличии — готовая сводка). Отвечай по ним.
+
+Правила:
+- Отвечай по-русски, коротко и по делу: обычно 2–6 предложений или небольшой список. Названия проектов, технологий, команд, файлов и флагов — в оригинале.
+- Можно использовать простой Markdown: списки, \`код\`, блоки кода для команд.
+- Не выдумывай возможностей, настроек или команд, которых нет в данных. Если в README ответа нет — так и скажи и подскажи, где в репозитории это обычно смотрят (docs, examples, issues).
+- Если вопрос не про этот репозиторий, вежливо верни разговор к нему, но на короткий общий вопрос по теме ответить можно.`;
+
+/** Собирает сообщения для чата: системная роль, данные репозитория и последние реплики истории. */
+export function buildChatMessages(repo: Repo, history: ChatMessage[]): Array<{ role: string; content: string }> {
+  const a = repo.analysis;
+  const summary =
+    a.status === 'done' && a.summary
+      ? ['', '===== Готовая сводка GitLib =====', a.summary, a.useCases.length ? `Когда пригодится: ${a.useCases.join('; ')}` : ''].filter(Boolean).join('\n')
+      : '';
+  const recent = history.slice(-CHAT_HISTORY_LIMIT).map((m) => ({ role: m.role, content: m.content.slice(0, CHAT_MESSAGE_MAX_CHARS) }));
+  return [
+    { role: 'system', content: CHAT_SYSTEM_PROMPT },
+    { role: 'user', content: `${buildUserPrompt(repo)}${summary}` },
+    { role: 'assistant', content: `Данные репозитория ${repo.fullName} прочитал. Задавайте вопросы.` },
+    ...recent,
+  ];
+}
+
+export async function chatAboutRepo(repo: Repo, settings: Settings, history: ChatMessage[]): Promise<ChatReply> {
+  if (!settings.llmBaseUrl || !settings.llmModel) {
+    throw new LlmError('LLM не настроена: укажите Base URL и модель в настройках', 'llm_not_configured');
+  }
+  const raw = await chatCompletion(settings, buildChatMessages(repo, history), false, 0.4);
+  return { reply: raw.trim(), model: settings.llmModel };
 }
 
 export interface LlmProbe {

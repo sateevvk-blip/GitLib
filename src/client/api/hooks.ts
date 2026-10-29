@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, UserPatch } from '../../shared/types.js';
+import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, UserPatch } from '../../shared/types.js';
 import { api, queryToParams } from './client';
 
 export const keys = {
@@ -116,6 +116,20 @@ export function useAnalyzeRepo() {
       qc.setQueryData(keys.repo(repo.id), repo);
       invalidate();
     },
+  });
+}
+
+type ChatVars = { id: string; messages: ChatMessage[] };
+
+/**
+ * Вопрос о репозитории. Запись не меняется, поэтому кэш не инвалидируется.
+ * Колбэки на уровне хука срабатывают даже после размонтирования панели чата —
+ * ответ не теряется, если её закрыли, пока модель думала.
+ */
+export function useRepoChat(opts: Omit<Parameters<typeof useMutation<ChatReply, Error, ChatVars>>[0], 'mutationFn'> = {}) {
+  return useMutation<ChatReply, Error, ChatVars>({
+    ...opts,
+    mutationFn: ({ id, messages }) => api.chatRepo(id, messages),
   });
 }
 

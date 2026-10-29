@@ -30,6 +30,7 @@ beforeAll(async () => {
         analyzeCalls += 1;
         return { status: 'done', summary: 'Сводка', useCases: ['Бэкап'], suggestedTopics: ['backup'], model: 'mock', generatedAt: new Date().toISOString(), error: null };
       },
+      chatAboutRepo: async (repo, _settings, messages) => ({ reply: `Про ${repo.fullName}: ${messages[messages.length - 1]?.content}`, model: 'mock' }),
     },
   });
   ({ app } = buildApp({ dataDir, dbPath: path.join(dataDir, 'gitlib.sqlite'), settingsPath: path.join(dataDir, 'settings.json'), store, settings, service }));
@@ -90,6 +91,18 @@ describe('REST API', () => {
     expect(repo.analysis.status).toBe('done');
     expect(repo.user.notes).toBe('Заметка');
     expect(analyzeCalls).toBeGreaterThan(0);
+  });
+
+  it('POST /chat отвечает на вопрос о репозитории и проверяет тело', async () => {
+    const res = await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [{ role: 'user', content: 'Как установить?' }] } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ reply: 'Про Octo/Backup-Tool: Как установить?', model: 'mock' });
+    expect((await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [] } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [{ role: 'system', content: 'x' }] } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: `/api/repos/${id}/chat`, payload: { messages: [{ role: 'assistant', content: 'x' }] } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: '/api/repos/nope/chat', payload: { messages: [{ role: 'user', content: 'x' }] } })).statusCode).toBe(404);
+    const after = await app.inject({ method: 'GET', url: `/api/repos/${id}` });
+    expect(after.json<Repo>().user.notes).toBe('Заметка');
   });
 
   it('POST /refresh обновляет GitHub-блок и не трогает user/analysis', async () => {

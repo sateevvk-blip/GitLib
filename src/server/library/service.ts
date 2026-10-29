@@ -1,11 +1,11 @@
-import type { AnalysisData, Collection, Facets, LibraryQuery, Repo, RepoSummary, UserPatch } from '../../shared/types.js';
+import type { AnalysisData, ChatMessage, ChatReply, Collection, Facets, LibraryQuery, Repo, RepoSummary, UserPatch } from '../../shared/types.js';
 import { normalizeRepoInput } from '../../shared/normalize.js';
 import { computeFacets, searchRepos } from '../../shared/search.js';
 import { applyAnalysis, applyGithubRefresh, applyUserPatch, emptyAnalysis, newUserData } from '../../shared/merge.js';
 import type { LibraryStore } from './store.js';
 import type { SettingsStore } from '../settings.js';
 import { downloadAvatar, fetchRepository } from '../github/client.js';
-import { analyzeRepo } from '../ai/analyzer.js';
+import { analyzeRepo, chatAboutRepo } from '../ai/analyzer.js';
 import { DuplicateError, NotFoundError, ValidationError } from '../errors.js';
 
 export interface ServiceDeps {
@@ -13,7 +13,7 @@ export interface ServiceDeps {
   settings: SettingsStore;
   /** Подменяются в тестах. */
   github?: { fetchRepository: typeof fetchRepository; downloadAvatar: typeof downloadAvatar };
-  ai?: { analyzeRepo: typeof analyzeRepo };
+  ai?: { analyzeRepo: typeof analyzeRepo; chatAboutRepo?: typeof chatAboutRepo };
   log?: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 }
 
@@ -25,7 +25,7 @@ export class LibraryService {
   private readonly store: LibraryStore;
   private readonly settings: SettingsStore;
   private readonly github: NonNullable<ServiceDeps['github']>;
-  private readonly ai: NonNullable<ServiceDeps['ai']>;
+  private readonly ai: { analyzeRepo: typeof analyzeRepo; chatAboutRepo: typeof chatAboutRepo };
   private readonly log: NonNullable<ServiceDeps['log']>;
   private readonly queue: string[] = [];
   private readonly queued = new Set<string>();
@@ -35,7 +35,7 @@ export class LibraryService {
     this.store = deps.store;
     this.settings = deps.settings;
     this.github = deps.github ?? { fetchRepository, downloadAvatar };
-    this.ai = deps.ai ?? { analyzeRepo };
+    this.ai = { analyzeRepo: deps.ai?.analyzeRepo ?? analyzeRepo, chatAboutRepo: deps.ai?.chatAboutRepo ?? chatAboutRepo };
     this.log = deps.log ?? { info: () => {}, warn: () => {}, error: () => {} };
   }
 
@@ -164,6 +164,22 @@ export class LibraryService {
       this.log.warn(`AI-анализ не удался для ${repo.fullName}: ${message}`);
       return { ...fresh, analysis: failed };
     }
+  }
+
+  /**
+   * Уточняющий вопрос о репозитории. История приходит с клиента и нигде не сохраняется;
+   * запись в библиотеке не меняется.
+   */
+  async chat(id: string, history: ChatMessage[]): Promise<ChatReply> {
+    const repo = this.get(id);
+    if (!this.settings.isLlmConfigured()) {
+      throw new ValidationError('LLM не настроена. Укажите Base URL и модель в настройках.');
+    }
+    const last = history[history.length - 1];
+    if (!last || last.role !== 'user' || !last.content.trim()) {
+      throw new ValidationError('Последнее сообщение должно быть вопросом пользователя');
+    }
+    return this.ai.chatAboutRepo(repo, this.settings.get(), history);
   }
 
   /** После перезапуска: незавершённые анализы ставятся в очередь заново или сбрасываются. */

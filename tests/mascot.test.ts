@@ -2,7 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { MOODS, MOOD_LABELS } from '../src/client/mascot/moods';
 import { CHARACTERS, CHARACTER_IDS, CHARACTER_POSES, DEFAULT_CHARACTER, LEGACY_CHARACTER_IDS, POSE_FOR_MOOD, isCharacterId, spriteFor } from '../src/client/mascot/characters';
 import { SPRITES } from '../src/client/mascot/sprites/manifest';
-import { isMilestone, timeGreeting } from '../src/client/mascot/store';
+import { hold, isMilestone, peek, release, timeGreeting } from '../src/client/mascot/store';
+
+describe('маскот: удержания по ключам', () => {
+  it('снятие удержания чата не сбрасывает удержание анализа', () => {
+    hold('thinking', 'Думаю над сводкой…');
+    hold('thinking', 'Листаю README…', 'chat');
+    expect(peek()).toMatchObject({ mood: 'thinking', message: 'Листаю README…', sticky: true });
+    release('chat');
+    expect(peek()).toMatchObject({ mood: 'thinking', message: 'Думаю над сводкой…', sticky: true });
+    release();
+    expect(peek()).toMatchObject({ mood: 'idle', sticky: false });
+  });
+});
 
 describe('маскот: настроения', () => {
   it('у каждого настроения есть русская подпись и поза', () => {

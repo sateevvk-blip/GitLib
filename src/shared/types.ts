@@ -124,6 +124,22 @@ export interface UserPatch {
   favorite?: boolean;
 }
 
+/** Сообщение чата о репозитории. История живёт в браузере и целиком передаётся с каждым вопросом. */
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface ChatReply {
+  reply: string;
+  model: string;
+}
+
+/** Сколько последних сообщений истории уходит модели (вместе с новым вопросом). */
+export const CHAT_HISTORY_LIMIT = 20;
+/** Максимальная длина одного сообщения чата, символов. */
+export const CHAT_MESSAGE_MAX_CHARS = 4000;
+
 export interface Settings {
   githubToken: string;
   llmBaseUrl: string;

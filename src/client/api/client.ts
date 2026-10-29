@@ -1,4 +1,6 @@
 import type {
+  ChatMessage,
+  ChatReply,
   Collection,
   ConnectivityStatus,
   DuplicateStrategy,
@@ -81,6 +83,8 @@ export const api = {
   deleteRepo: (id: string) => request<void>(`/api/repos/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   refreshRepo: (id: string) => request<Repo>(`/api/repos/${encodeURIComponent(id)}/refresh`, { method: 'POST' }),
   analyzeRepo: (id: string) => request<Repo>(`/api/repos/${encodeURIComponent(id)}/analyze`, { method: 'POST' }),
+  chatRepo: (id: string, messages: ChatMessage[]) =>
+    request<ChatReply>(`/api/repos/${encodeURIComponent(id)}/chat`, { method: 'POST', body: JSON.stringify({ messages }) }),
 
   listCollections: () => request<Collection[]>('/api/collections'),
   createCollection: (name: string, description = '') =>

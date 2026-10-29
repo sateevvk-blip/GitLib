@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { LibraryService } from '../library/service.js';
-import { REPO_STATUSES, type LibraryQuery, type SortKey } from '../../shared/types.js';
+import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_CHARS, REPO_STATUSES, type LibraryQuery, type SortKey } from '../../shared/types.js';
 import { ValidationError } from '../errors.js';
 
 const SORT_KEYS: SortKey[] = ['added', 'updated', 'stars', 'name', 'pushed'];
@@ -38,6 +38,15 @@ const PatchBody = z
     topics: z.array(z.string().max(100)).max(100).optional(),
     status: z.enum(REPO_STATUSES).optional(),
     favorite: z.boolean().optional(),
+  })
+  .strict();
+
+const ChatBody = z
+  .object({
+    messages: z
+      .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(CHAT_MESSAGE_MAX_CHARS) }).strict())
+      .min(1, 'Нужен хотя бы один вопрос')
+      .max(CHAT_HISTORY_LIMIT * 2),
   })
   .strict();
 
@@ -83,5 +92,10 @@ export function registerRepoRoutes(app: FastifyInstance, service: LibraryService
     const repo = service.requestAnalysis(req.params.id);
     if (req.query.wait === '1') return service.runAnalysis(req.params.id);
     return repo;
+  });
+
+  app.post<{ Params: { id: string } }>('/api/repos/:id/chat', async (req) => {
+    const { messages } = parseBody(ChatBody, req.body);
+    return service.chat(req.params.id, messages);
   });
 }
