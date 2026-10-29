@@ -52,5 +52,6 @@ jobs:
           name: gitlib-macos
           path: release
       - run: |
-          cd release && unzip -q gitlib-*-macos-x64.zip && cd ..
+          # Артефакт сохраняет папку версии: release/<версия>/gitlib-*-macos-x64.zip
+          unzip -q release/*/gitlib-*-macos-x64.zip -d release
           node scripts/smoke.mjs --exe release/gitlib-*-macos-x64/GitLib.app/Contents/Resources/gitlib-server

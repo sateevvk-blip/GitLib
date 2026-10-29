@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Workflow App: задание smoke на Intel Mac не находило архив — артефакт `gitlib-macos` сохраняет папку версии (`release/<версия>/`), а распаковка искала zip в корне `release/`.
+
 ## [1.1.0] — 2026-10-29
 
 ### Added
