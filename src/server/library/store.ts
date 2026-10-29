@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import type { Collection, GithubData, Repo, RepoSummary } from '../../shared/types.js';
+import type { RepoTree } from '../ai/context.js';
 
 interface RepoRow {
   id: string;
@@ -236,5 +237,43 @@ export class LibraryStore {
       .prepare('SELECT collection_id FROM collection_repos WHERE repo_id = ?')
       .all(repoId) as unknown as Array<{ collection_id: string }>;
     return rows.map((r) => r.collection_id);
+  }
+
+  // ---------- кэш содержимого для чата ----------
+
+  getTreeCache(repoId: string): { tree: RepoTree; pushedAt: string | null } | null {
+    const row = this.db.prepare('SELECT tree_sha, branch, truncated, pushed_at, entries_json, fetched_at FROM repo_trees WHERE repo_id = ?').get(repoId) as
+      | { tree_sha: string; branch: string; truncated: number; pushed_at: string | null; entries_json: string; fetched_at: string }
+      | undefined;
+    if (!row) return null;
+    return {
+      tree: { sha: row.tree_sha, branch: row.branch, truncated: row.truncated === 1, entries: JSON.parse(row.entries_json) as RepoTree['entries'], fetchedAt: row.fetched_at },
+      pushedAt: row.pushed_at,
+    };
+  }
+
+  saveTreeCache(repoId: string, tree: RepoTree, pushedAt: string | null): void {
+    this.db
+      .prepare(
+        `INSERT INTO repo_trees (repo_id, tree_sha, branch, truncated, pushed_at, entries_json, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(repo_id) DO UPDATE SET tree_sha = excluded.tree_sha, branch = excluded.branch, truncated = excluded.truncated,
+           pushed_at = excluded.pushed_at, entries_json = excluded.entries_json, fetched_at = excluded.fetched_at`,
+      )
+      .run(repoId, tree.sha, tree.branch, tree.truncated ? 1 : 0, pushedAt, JSON.stringify(tree.entries), tree.fetchedAt);
+  }
+
+  /** Содержимое файла, если в кэше лежит именно эта версия (sha блоба). */
+  getFileCache(repoId: string, path: string, sha: string): string | null {
+    const row = this.db.prepare('SELECT sha, content FROM repo_files WHERE repo_id = ? AND path = ?').get(repoId, path) as { sha: string; content: string } | undefined;
+    return row && row.sha === sha ? row.content : null;
+  }
+
+  saveFileCache(repoId: string, path: string, sha: string, content: string): void {
+    this.db
+      .prepare(
+        `INSERT INTO repo_files (repo_id, path, sha, content, fetched_at) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(repo_id, path) DO UPDATE SET sha = excluded.sha, content = excluded.content, fetched_at = excluded.fetched_at`,
+      )
+      .run(repoId, path, sha, content, new Date().toISOString());
   }
 }

@@ -129,6 +129,45 @@ async function fetchReadme(base: string, token: string): Promise<string | null> 
   }
 }
 
+export interface FetchedTreeEntry {
+  path: string;
+  type: 'blob' | 'tree';
+  sha: string;
+  size: number | null;
+}
+
+export interface FetchedTree {
+  sha: string;
+  truncated: boolean;
+  entries: FetchedTreeEntry[];
+}
+
+interface GithubTreeResponse {
+  sha: string;
+  truncated?: boolean;
+  tree?: Array<{ path?: string; type?: string; sha?: string; size?: number }>;
+}
+
+/** Полное дерево файлов ветки (GitHub обрезает очень большие деревья — `truncated`). */
+export async function fetchTree(owner: string, name: string, branch: string, token: string): Promise<FetchedTree> {
+  const base = `${API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
+  const res = await githubFetch(`${base}/git/trees/${encodeURIComponent(branch)}?recursive=1`, token);
+  const data = (await res.json()) as GithubTreeResponse;
+  const entries: FetchedTreeEntry[] = [];
+  for (const e of data.tree ?? []) {
+    if (!e.path || !e.sha || (e.type !== 'blob' && e.type !== 'tree')) continue;
+    entries.push({ path: e.path, type: e.type, sha: e.sha, size: typeof e.size === 'number' ? e.size : null });
+  }
+  return { sha: data.sha, truncated: Boolean(data.truncated), entries };
+}
+
+/** Содержимое файла по sha блоба (неизменяемо — удобно кэшировать). */
+export async function fetchBlob(owner: string, name: string, sha: string, token: string): Promise<string> {
+  const base = `${API}/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`;
+  const res = await githubFetch(`${base}/git/blobs/${encodeURIComponent(sha)}`, token, 'application/vnd.github.raw+json');
+  return res.text();
+}
+
 async function fetchLanguages(base: string, token: string): Promise<Record<string, number>> {
   try {
     const res = await githubFetch(`${base}/languages`, token);

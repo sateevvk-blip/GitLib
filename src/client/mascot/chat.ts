@@ -73,7 +73,8 @@ const histories = new Map<string, ChatMessage[]>();
 function isMessage(v: unknown): v is ChatMessage {
   if (!v || typeof v !== 'object') return false;
   const m = v as Partial<ChatMessage>;
-  return (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string';
+  if ((m.role !== 'user' && m.role !== 'assistant') || typeof m.content !== 'string') return false;
+  return m.sources === undefined || (Array.isArray(m.sources) && m.sources.every((s) => typeof s === 'string'));
 }
 
 export function getHistory(id: string): ChatMessage[] {
@@ -108,5 +109,6 @@ export const STARTER_QUESTIONS: readonly string[] = [
   'Как установить и запустить?',
   'Какие основные возможности?',
   'Какие ограничения и подводные камни?',
-  'Чем отличается от аналогов?',
+  'Как это устроено внутри?',
+  'С чего начать и как применить у себя?',
 ];

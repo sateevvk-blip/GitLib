@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Eraser, SendHorizontal, X } from 'lucide-react';
+import { AlertTriangle, Eraser, FileText, SendHorizontal, X } from 'lucide-react';
 import type { ChatMessage } from '../../shared/types.js';
 import { CHAT_MESSAGE_MAX_CHARS } from '../../shared/types.js';
 import { useRepoChat, useSettings } from '../api/hooks';
@@ -32,6 +32,7 @@ export function RepoChat({ target }: Props) {
   const [history, setHistory] = useState<ChatMessage[]>(() => getHistory(target.id));
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -41,7 +42,8 @@ export function RepoChat({ target }: Props) {
       hold('thinking', phrases.chatThinking, HOLD_KEY);
     },
     onSuccess: (r, { id, messages }) => {
-      const next = saveHistory(id, [...messages, { role: 'assistant', content: r.reply }]);
+      const next = saveHistory(id, [...messages, { role: 'assistant', content: r.reply, ...(r.sources.length ? { sources: r.sources } : {}) }]);
+      setNotice(r.notice);
       if (id === target.id) setHistory(next);
       react('happy', phrases.chatReplied, 2500);
       inputRef.current?.focus();
@@ -80,6 +82,7 @@ export function RepoChat({ target }: Props) {
 
   const ask = (messages: ChatMessage[]) => {
     setError(null);
+    setNotice(null);
     chat.mutate({ id: target.id, messages });
   };
 
@@ -99,6 +102,7 @@ export function RepoChat({ target }: Props) {
   const clear = () => {
     setHistory(saveHistory(target.id, []));
     setError(null);
+    setNotice(null);
     inputRef.current?.focus();
   };
 
@@ -146,7 +150,7 @@ export function RepoChat({ target }: Props) {
           </div>
         ) : (
           <div className="chat-msg">
-            <div className="chat-bubble">{phrases.chatWelcome(shortName, target.hasReadme)}</div>
+            <div className="chat-bubble">{phrases.chatWelcome(shortName, target.hasReadme, online)}</div>
           </div>
         )}
         {llmConfigured && history.length === 0 && (
@@ -161,8 +165,19 @@ export function RepoChat({ target }: Props) {
         {history.map((m, i) => (
           <div key={i} className={`chat-msg${m.role === 'user' ? ' is-user' : ''}`}>
             <div className="chat-bubble">{m.role === 'assistant' ? <Markdown markdown={m.content} repoUrl={target.htmlUrl} branch={target.branch} /> : m.content}</div>
+            {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
+              <div className="chat-sources" title="Файлы репозитория, которые прочитал напарник">
+                <FileText size={12} />
+                {m.sources.map((path) => (
+                  <a key={path} href={`${target.htmlUrl}/blob/${target.branch}/${path}`} target="_blank" rel="noreferrer">
+                    {path}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         ))}
+        {notice && !pending && <div className="chat-notice-line">{notice}</div>}
         {pending && (
           <div className="chat-msg">
             <div className="chat-bubble chat-pending">

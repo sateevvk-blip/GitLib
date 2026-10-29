@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { AnalysisData, ChatMessage, ChatReply, Repo, Settings } from '../../shared/types.js';
-import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_CHARS } from '../../shared/types.js';
+import { CHAT_HISTORY_LIMIT, CHAT_MAX_FILES, CHAT_MESSAGE_MAX_CHARS } from '../../shared/types.js';
+import { questionKeywords, readableEntries, renderContext, summarizeTree, type ChatContext, type RepoTree, type TreeEntry } from './context.js';
 import { LlmError } from '../errors.js';
 import { config } from '../config.js';
 
@@ -167,37 +168,99 @@ export async function analyzeRepo(repo: Repo, settings: Settings): Promise<Analy
   };
 }
 
-const CHAT_SYSTEM_PROMPT = `Ты — технический библиотекарь GitLib, напарник разработчика. Пользователь открыл карточку GitHub-репозитория и задаёт уточняющие вопросы о нём.
-Ниже — данные репозитория (метаданные, README, при наличии — готовая сводка). Отвечай по ним.
+const CHAT_SYSTEM_PROMPT = `Ты — технический библиотекарь GitLib, напарник разработчика. Пользователь открыл карточку GitHub-репозитория и задаёт вопросы о нём.
+Тебе даны: метаданные, README, при наличии — готовая сводка, структура файлов репозитория и содержимое файлов, отобранных под вопрос. Отвечай по ним предметно.
 
 Правила:
-- Отвечай по-русски, коротко и по делу: обычно 2–6 предложений или небольшой список. Названия проектов, технологий, команд, файлов и флагов — в оригинале.
-- Можно использовать простой Markdown: списки, \`код\`, блоки кода для команд.
-- Не выдумывай возможностей, настроек или команд, которых нет в данных. Если в README ответа нет — так и скажи и подскажи, где в репозитории это обычно смотрят (docs, examples, issues).
+- Отвечай по-русски, по делу: обычно 3–8 предложений или список. Названия проектов, технологий, команд, файлов и флагов — в оригинале.
+- Простой Markdown: списки, \`код\`, блоки кода для команд. Файлы называй по пути (например, \`docs/usage.md\`) — пользователь может их открыть.
+- Опирайся на содержимое файлов и структуру: если спрашивают «какие есть команды/скиллы/агенты/примеры», перечисли конкретные имена из файлов и папок, кратко поясни каждый. Если файлов много — покажи самые важные и скажи, сколько всего и где лежат остальные.
+- Не выдумывай возможностей, настроек или команд, которых нет в данных. Если ответа в прочитанных файлах нет — скажи, что именно прочитал, и назови файлы или папки репозитория, где ответ скорее всего есть.
+- Заверши коротким практическим советом, когда это уместно: как применить к задаче пользователя, с чего начать, на что обратить внимание (зависимости, ограничения, подводные камни). Не повторяй советом сам ответ.
 - Если вопрос не про этот репозиторий, вежливо верни разговор к нему, но на короткий общий вопрос по теме ответить можно.`;
 
-/** Собирает сообщения для чата: системная роль, данные репозитория и последние реплики истории. */
-export function buildChatMessages(repo: Repo, history: ChatMessage[]): Array<{ role: string; content: string }> {
+/** Что модель должна знать о репозитории перед разговором: метаданные, README, сводка, структура и файлы. */
+export function buildChatContextMessage(repo: Repo, ctx: ChatContext, question = ''): string {
   const a = repo.analysis;
   const summary =
     a.status === 'done' && a.summary
       ? ['', '===== Готовая сводка GitLib =====', a.summary, a.useCases.length ? `Когда пригодится: ${a.useCases.join('; ')}` : ''].filter(Boolean).join('\n')
       : '';
+  const repoContext = renderContext(ctx, question);
+  return `${buildUserPrompt(repo)}${summary}${repoContext ? `\n\n${repoContext}` : ''}`;
+}
+
+const EMPTY_CONTEXT: ChatContext = { tree: null, files: [], notes: [] };
+
+/** Собирает сообщения для чата: системная роль, данные репозитория с файлами и последние реплики истории. */
+export function buildChatMessages(repo: Repo, history: ChatMessage[], ctx: ChatContext = EMPTY_CONTEXT): Array<{ role: string; content: string }> {
   const recent = history.slice(-CHAT_HISTORY_LIMIT).map((m) => ({ role: m.role, content: m.content.slice(0, CHAT_MESSAGE_MAX_CHARS) }));
+  const read = ctx.files.length ? ` и файлы: ${ctx.files.map((f) => f.path).join(', ')}` : '';
   return [
     { role: 'system', content: CHAT_SYSTEM_PROMPT },
-    { role: 'user', content: `${buildUserPrompt(repo)}${summary}` },
-    { role: 'assistant', content: `Данные репозитория ${repo.fullName} прочитал. Задавайте вопросы.` },
+    { role: 'user', content: buildChatContextMessage(repo, ctx, history[history.length - 1]?.content ?? '') },
+    { role: 'assistant', content: `Данные репозитория ${repo.fullName}${read} прочитал. Задавайте вопросы.` },
     ...recent,
   ];
 }
 
-export async function chatAboutRepo(repo: Repo, settings: Settings, history: ChatMessage[]): Promise<ChatReply> {
+/** Ответ модели без служебных полей; сервис дополняет его источниками и примечанием. */
+export interface ChatAnswer {
+  reply: string;
+  model: string;
+}
+
+export async function chatAboutRepo(repo: Repo, settings: Settings, history: ChatMessage[], ctx: ChatContext = EMPTY_CONTEXT): Promise<ChatAnswer> {
   if (!settings.llmBaseUrl || !settings.llmModel) {
     throw new LlmError('LLM не настроена: укажите Base URL и модель в настройках', 'llm_not_configured');
   }
-  const raw = await chatCompletion(settings, buildChatMessages(repo, history), false, 0.4);
+  const raw = await chatCompletion(settings, buildChatMessages(repo, history, ctx), false, 0.4);
   return { reply: raw.trim(), model: settings.llmModel };
+}
+
+const SELECT_SYSTEM_PROMPT = `Ты помогаешь ответить на вопрос о GitHub-репозитории. Тебе даны вопрос, структура файлов и список файлов-кандидатов.
+Выбери файлы, которые нужно прочитать, чтобы ответить предметно: документацию, примеры, конфигурацию, точки входа, файлы с перечнями (команд, скиллов, агентов и т. п.).
+Ответь строго одним JSON-объектом без пояснений: {"files": ["путь/из/списка", ...]}.
+Не больше ${CHAT_MAX_FILES} путей, только существующие пути из структуры, самые полезные — первыми. Если для ответа достаточно README и структуры — верни {"files": []}.`;
+
+const SelectSchema = z.object({ files: z.array(z.string()).default([]) });
+
+/** Собирает запрос на выбор файлов (экспортирован для тестов). */
+export function buildSelectMessages(repo: Repo, history: ChatMessage[], tree: RepoTree, candidates: TreeEntry[]): Array<{ role: string; content: string }> {
+  const recent = history.slice(-5, -1).map((m) => `${m.role === 'user' ? 'Пользователь' : 'Ответ'}: ${m.content.slice(0, 300)}`);
+  const question = history[history.length - 1]?.content ?? '';
+  const a = repo.analysis;
+  const user = [
+    `Репозиторий: ${repo.fullName} — ${repo.github.description ?? '(без описания)'}`,
+    a.status === 'done' && a.summary ? `Сводка: ${a.summary.slice(0, 600)}` : '',
+    recent.length ? `Предыдущие реплики:\n${recent.join('\n')}` : '',
+    `Вопрос: ${question}`,
+    '',
+    `Кандидаты по ключевым словам: ${candidates.map((c) => c.path).join(', ') || '(нет)'}`,
+    '',
+    summarizeTree(tree, config.chatTreeChars, questionKeywords(question)),
+  ]
+    .filter((line) => line !== '')
+    .join('\n');
+  return [
+    { role: 'system', content: SELECT_SYSTEM_PROMPT },
+    { role: 'user', content: user },
+  ];
+}
+
+/** Просит модель выбрать файлы под вопрос. Возвращает только существующие читаемые пути (до CHAT_MAX_FILES). */
+export async function selectChatFiles(repo: Repo, settings: Settings, history: ChatMessage[], tree: RepoTree, candidates: TreeEntry[]): Promise<string[]> {
+  const raw = await chatCompletion(settings, buildSelectMessages(repo, history, tree, candidates), true, 0.1);
+  const parsed = SelectSchema.safeParse(extractJson(raw));
+  if (!parsed.success) throw new LlmError('Модель вернула список файлов не в ожидаемом формате', 'llm_bad_json');
+  const readable = new Set(readableEntries(tree).map((e) => e.path));
+  const out: string[] = [];
+  for (const f of parsed.data.files) {
+    const p = f.trim().replace(/^\.?\//, '');
+    if (readable.has(p) && !out.includes(p)) out.push(p);
+    if (out.length >= CHAT_MAX_FILES) break;
+  }
+  return out;
 }
 
 export interface LlmProbe {

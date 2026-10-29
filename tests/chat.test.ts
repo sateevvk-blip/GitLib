@@ -58,7 +58,9 @@ describe('чат о репозитории: сервис', () => {
       store,
       settings,
       github: { fetchRepository: async () => ({ github: makeGithub(), canonical: { owner: 'octo', name: 'test' } }), downloadAvatar: async () => null },
+      contents: { fetchTree: async () => ({ sha: 't', truncated: false, entries: [] }), fetchBlob: async () => '' },
       ai: {
+        selectChatFiles: async () => [],
         analyzeRepo: async () => {
           throw new Error('не вызывается');
         },
@@ -77,7 +79,7 @@ describe('чат о репозитории: сервис', () => {
     const { service, store, repo, seen } = makeService(true);
     const before = store.getById(repo.id);
     const reply = await service.chat(repo.id, [{ role: 'user', content: 'Что это?' }]);
-    expect(reply).toEqual({ reply: 'Ответ модели', model: 'test' });
+    expect(reply).toEqual({ reply: 'Ответ модели', model: 'test', sources: [], notice: null });
     expect(seen[0]).toEqual([{ role: 'user', content: 'Что это?' }]);
     expect(store.getById(repo.id)).toEqual(before);
   });
