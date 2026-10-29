@@ -105,6 +105,16 @@ export function saveHistory(id: string, messages: ChatMessage[]): ChatMessage[] 
 }
 
 /** Вопросы для старта, пока история пуста. */
+/**
+ * Куда прокрутить журнал чата после изменения истории: пришёл новый ответ —
+ * к последнему вопросу пользователя, чтобы ответ читался с начала; иначе — в конец
+ * (свой вопрос, «думает…», ошибка, открытие панели).
+ */
+export function scrollAnchor(previousLength: number, history: readonly ChatMessage[]): 'question' | 'bottom' {
+  const grew = history.length > previousLength;
+  return grew && history[history.length - 1]?.role === 'assistant' ? 'question' : 'bottom';
+}
+
 export const STARTER_QUESTIONS: readonly string[] = [
   'Как установить и запустить?',
   'Какие основные возможности?',

@@ -9,7 +9,7 @@ import { errorMessage } from '../lib/toast';
 import { useOnline } from '../lib/online';
 import { CHARACTERS } from './characters';
 import { useCharacter } from './choice';
-import { STARTER_QUESTIONS, closeChat, getHistory, saveHistory, setChatPending, useChat, type ChatTarget } from './chat';
+import { STARTER_QUESTIONS, closeChat, getHistory, saveHistory, scrollAnchor, setChatPending, useChat, type ChatTarget } from './chat';
 import { hold, phrases, react, release } from './store';
 
 interface Props {
@@ -35,6 +35,8 @@ export function RepoChat({ target }: Props) {
   const [notice, setNotice] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const seenLength = useRef(history.length);
+  const anchor = useRef<'question' | 'bottom'>('bottom');
 
   const chat = useRepoChat({
     onMutate: ({ id }) => {
@@ -75,9 +77,25 @@ export function RepoChat({ target }: Props) {
     if (!pending) setHistory(getHistory(target.id));
   }, [pending, target.id]);
 
+  // Новый ответ показываем с вопроса, а не с конца — длинный ответ читается сверху вниз.
+  // Якорь выбирается при изменении длины истории и держится, пока эффект срабатывает
+  // на смену pending/error, иначе ответ тут же уезжал бы в конец.
   useEffect(() => {
     const el = logRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    if (history.length !== seenLength.current) {
+      anchor.current = scrollAnchor(seenLength.current, history);
+      seenLength.current = history.length;
+    }
+    if (anchor.current === 'question') {
+      const questions = el.querySelectorAll<HTMLElement>('.chat-msg.is-user');
+      const question = questions[questions.length - 1];
+      if (question) {
+        el.scrollTop = question.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop - 6;
+        return;
+      }
+    }
+    el.scrollTop = el.scrollHeight;
   }, [history, pending, error]);
 
   const ask = (messages: ChatMessage[]) => {
