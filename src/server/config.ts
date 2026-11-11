@@ -45,6 +45,7 @@ export const config = {
   toolTextMaxChars: 30_000,
   toolTextForLlmChars: 12_000,
   toolChatTextChars: 20_000,
+  toolChatNotesChars: 8_000,
   /** Общий бюджет времени на загрузку чужой страницы вместе с редиректами. */
   toolFetchTimeoutMs: 20_000,
   /** Лимит на соединение и заголовки, на каждый шаг цепочки редиректов. */

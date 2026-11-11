@@ -4,7 +4,7 @@ import path from 'node:path';
 import { TOOL_CATEGORIES } from '../../shared/types.js';
 import type { ChatMessage, ChatReply, Tool, ToolAnalysis, ToolFacets, ToolPatch, ToolQuery, ToolRecommendation, ToolSource, ToolSummary } from '../../shared/types.js';
 import { normalizeToolUrl } from '../../shared/tool-url.js';
-import { computeToolFacets, searchTools } from '../../shared/tools-search.js';
+import { computeToolFacets, scoreTools, searchTools } from '../../shared/tools-search.js';
 import { applyToolAnalysis, applyToolImage, applyToolPatch, applyToolSource, emptyToolAnalysis, newToolUser } from '../../shared/merge.js';
 import type { ToolsStore } from './store.js';
 import type { SettingsStore } from '../settings.js';
@@ -12,7 +12,7 @@ import type { ServiceDeps } from '../library/service.js';
 import { JobQueue } from '../library/queue.js';
 import { fetchImage, fetchPage, type FetchOpts } from './fetcher.js';
 import { extractPage, type ExtractedPage } from './extract.js';
-import { analyzeTool } from '../ai/tool-analyzer.js';
+import { analyzeTool, chatAboutTool, rankTools } from '../ai/tool-analyzer.js';
 import { config } from '../config.js';
 import { AppError, FetchError, NotFoundError, ValidationError } from '../errors.js';
 
@@ -24,7 +24,7 @@ export interface ToolsDeps {
   imagesDir: string;
   /** Подменяются в тестах. Настройки (ключи, токены) в сетевые вызовы не передаются. */
   net?: { fetchPage: typeof fetchPage; fetchImage: typeof fetchImage };
-  ai?: { analyzeTool: typeof analyzeTool };
+  ai?: Partial<{ analyzeTool: typeof analyzeTool; chatAboutTool: typeof chatAboutTool; rankTools: typeof rankTools }>;
   log?: ServiceDeps['log'];
 }
 
@@ -59,7 +59,7 @@ export class ToolsService {
   private readonly queue: JobQueue;
   private readonly imagesDir: string;
   private readonly net: NonNullable<ToolsDeps['net']>;
-  private readonly ai: NonNullable<ToolsDeps['ai']>;
+  private readonly ai: Required<NonNullable<ToolsDeps['ai']>>;
   private readonly log: NonNullable<ToolsDeps['log']>;
 
   constructor(deps: ToolsDeps) {
@@ -68,7 +68,7 @@ export class ToolsService {
     this.queue = deps.queue ?? new JobQueue();
     this.imagesDir = deps.imagesDir;
     this.net = deps.net ?? { fetchPage, fetchImage };
-    this.ai = deps.ai ?? { analyzeTool };
+    this.ai = { analyzeTool, chatAboutTool, rankTools, ...deps.ai };
     this.log = deps.log ?? { info: () => {}, warn: () => {}, error: () => {} };
   }
 
@@ -261,14 +261,57 @@ export class ToolsService {
     });
   }
 
-  // Заглушки: чат и подбор делает T7.
+  // ---------- чат и подбор ----------
 
-  async chat(_id: string, _history: ChatMessage[]): Promise<ChatReply> {
-    throw new AppError('Будет в следующей задаче', 501, 'not_implemented');
+  /** Чат по карточке: сеть не нужна, берётся сохранённый текст страницы. Без LLM — ошибка, как у репозиториев. */
+  async chat(id: string, history: ChatMessage[]): Promise<ChatReply> {
+    const tool = this.get(id);
+    if (!this.settings.isLlmConfigured()) {
+      throw new ValidationError('LLM не настроена. Укажите Base URL и модель в настройках.');
+    }
+    const last = history[history.length - 1];
+    if (!last || last.role !== 'user' || !last.content.trim()) {
+      throw new ValidationError('Последнее сообщение должно быть вопросом пользователя');
+    }
+    const answer = await this.ai.chatAboutTool(tool, this.settings.get(), history);
+    const hasText = Boolean(tool.source.text);
+    const notice = !hasText
+      ? 'Ответ только по карточке: текст страницы не сохранён'
+      : tool.source.status !== 'ok'
+        ? 'Текст страницы сохранён не полностью — ответ может быть неточным'
+        : null;
+    return { reply: answer.reply, model: answer.model, sources: hasText ? [tool.url] : [], notice };
   }
 
-  async recommend(_task: string): Promise<ToolRecommendation> {
-    throw new AppError('Будет в следующей задаче', 501, 'not_implemented');
+  /** Подбор под задачу (S7). Без LLM или при её сбое — честный поиск по словам, без выдуманных причин. */
+  async recommend(task: string): Promise<ToolRecommendation> {
+    const all = this.store.listSummaries();
+    if (all.length === 0) return { mode: 'search', items: [], comment: null, notice: 'В библиотеке пока нет инструментов' };
+
+    const scored = scoreTools(all, task);
+    const byId = new Map(all.map((t) => [t.id, t]));
+    const max = config.toolRecommendMaxCandidates;
+    const searchItems = () => scored.filter((s) => s.score > 0).slice(0, max).map((s) => ({ tool: s.tool, reason: null, fit: null }));
+    const fallback = (notice: string): ToolRecommendation => ({ mode: 'search', items: searchItems(), comment: null, notice });
+
+    if (!this.settings.isLlmConfigured()) return fallback('LLM не настроена — показан поиск по словам');
+
+    let candidates = scored.map((s) => s.tool);
+    if (candidates.length > max) {
+      candidates = scored.some((s) => s.score > 0)
+        ? candidates.slice(0, max)
+        : [...candidates].sort((a, b) => b.user.addedAt.localeCompare(a.user.addedAt)).slice(0, max);
+    }
+    try {
+      const { matches, comment, shown } = await this.ai.rankTools(task, candidates, this.settings.get());
+      const allowed = new Set(shown);
+      // Модель не может добавить в выдачу то, чего не видела (нет среди кандидатов или отрезано бюджетом); дубликаты rankTools уже убрал.
+      const items = matches.filter((m) => allowed.has(m.id)).map((m) => ({ tool: byId.get(m.id)!, reason: m.reason, fit: m.fit }));
+      return { mode: 'ai', items, comment, notice: null };
+    } catch (e) {
+      this.log.warn(`Подбор через LLM не удался: ${e instanceof Error ? e.message : String(e)}`);
+      return fallback('Модель недоступна — показан поиск по словам');
+    }
   }
 
   // ---------- внутреннее ----------

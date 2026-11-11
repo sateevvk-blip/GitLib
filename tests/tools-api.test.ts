@@ -284,13 +284,26 @@ describe('чтение, PATCH, удаление', () => {
     expect(fs.readdirSync(t.imagesDir)).toEqual([]);
   });
 
-  it('chat и recommend — заглушки 501 (после проверки тела)', async () => {
-    const t = setup();
+  it('chat: тело проверяется (роль system, лишнее поле, пустой список → 400), без LLM — 400, 404 для чужого id', async () => {
+    const t = setup({ llm: false });
     const tool = await t.add('https://three.js.org');
-    const chat = await t.post(`/api/tools/${tool.id}/chat`, { messages: [{ role: 'user', content: 'Что это?' }] });
-    expect(chat.statusCode).toBe(501);
-    expect((await t.post('/api/tools/recommend', { task: 'нужен редактор схем' })).statusCode).toBe(501);
+    const url = `/api/tools/${tool.id}/chat`;
+    expect((await t.post(url, { messages: [{ role: 'system', content: 'x' }] })).statusCode).toBe(400);
+    expect((await t.post(url, { messages: [{ role: 'user', content: 'x', extra: 1 }] })).statusCode).toBe(400);
+    expect((await t.post(url, { messages: [] })).statusCode).toBe(400);
+    expect((await t.post(url, { messages: [{ role: 'user', content: 'Что это?' }] })).statusCode).toBe(400);
+    expect((await t.post('/api/tools/нет/chat', { messages: [{ role: 'user', content: 'Что это?' }] })).statusCode).toBe(404);
+  });
+
+  it('recommend: короткая задача → 400; без LLM — поиск по словам; пустая библиотека — notice', async () => {
+    const t = setup({ llm: false });
     expect((await t.post('/api/tools/recommend', { task: 'я' })).statusCode).toBe(400);
+    const empty = (await t.post('/api/tools/recommend', { task: 'нужен редактор схем' })).json();
+    expect(empty).toMatchObject({ mode: 'search', items: [], notice: 'В библиотеке пока нет инструментов' });
+    await t.add('https://three.js.org');
+    const found = (await t.post('/api/tools/recommend', { task: 'Three.js' })).json();
+    expect(found).toMatchObject({ mode: 'search', notice: 'LLM не настроена — показан поиск по словам' });
+    expect(found.items).toHaveLength(1);
   });
 
   it('health показывает число инструментов', async () => {
