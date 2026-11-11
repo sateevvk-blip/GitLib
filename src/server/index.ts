@@ -3,7 +3,7 @@ import { config, ensureDataDirs } from './config.js';
 
 ensureDataDirs();
 
-const { app, service } = buildApp({
+const { app } = buildApp({
   dataDir: config.dataDir,
   dbPath: config.dbPath,
   settingsPath: config.settingsPath,
@@ -11,8 +11,6 @@ const { app, service } = buildApp({
   logger: { level: process.env.GITLIB_LOG_LEVEL ?? 'info' },
   onShutdown: stop,
 });
-
-service.recoverPending();
 
 app
   .listen({ port: config.port, host: config.host })

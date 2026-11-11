@@ -13,7 +13,7 @@ for (const [addr, bits] of [
 ] as const) blocked.addSubnet(addr, bits, 'ipv4');
 for (const [addr, bits] of [
   ['::', 96], ['::ffff:0:0:0', 96], ['fc00::', 7], ['fe80::', 10], ['fec0::', 10], ['ff00::', 8],
-  ['64:ff9b::', 96], ['64:ff9b:1::', 48], ['2002::', 16],
+  ['64:ff9b::', 96], ['64:ff9b:1::', 48], ['2001::', 32], ['2002::', 16],
 ] as const) blocked.addSubnet(addr, bits, 'ipv6');
 
 /** Чистая проверка по строке IP. Не-IP и неразобранное — запрещено. */

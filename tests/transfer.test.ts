@@ -7,6 +7,7 @@ import { EXPORT_FORMAT, EXPORT_VERSION, type ExportFile } from '../src/shared/ty
 import { openDatabase } from '../src/server/db/database.js';
 import { LibraryStore } from '../src/server/library/store.js';
 import { ToolsStore } from '../src/server/tools/store.js';
+import { emptyAnalysis } from '../src/shared/merge.js';
 import { makeRepo, makeTool, tempDataDir } from './helpers.js';
 
 function makeStore() {
@@ -276,6 +277,29 @@ describe('инструменты в экспорте и импорте', () => {
     expect([...fs.readFileSync(path.join(dir, 'tool-dst-icon.png'))]).toEqual([...PNG]);
     expect(fs.existsSync(path.join(dir, 'tool-dst-user.png'))).toBe(true);
     expect(fs.readdirSync(dir).filter((n) => n.endsWith('.tmp'))).toEqual([]);
+  });
+
+  it.each(['merge', 'skip', 'replace'] as const)('статус pending из файла не сохраняется (%s): сводка → done, без сводки → none', (strategy) => {
+    const src = makeStore();
+    seedTool(src, 'https://example.com/p', 'tool-p');
+    const file = asFile(src);
+    file.tools[0]!.analysis = { ...file.tools[0]!.analysis, status: 'pending', summary: 'Есть', error: 'старая' };
+    const withSummary = makeRepo('octo/ps', { analysis: { ...emptyAnalysis(), status: 'pending', summary: 'Есть' } });
+    const without = makeRepo('octo/pn', { analysis: { ...emptyAnalysis(), status: 'pending' } });
+    file.repos = [withSummary, without].map((r) => ({ ...r, avatarDataUrl: null })) as unknown as ExportFile['repos'];
+    for (const withLocal of [false, true]) {
+      const dst = makeStore();
+      if (withLocal) {
+        dst.store.insert(makeRepo('octo/ps'));
+        dst.store.insert(makeRepo('octo/pn'));
+        seedTool(dst, 'https://example.com/p', 'tool-local');
+      }
+      applyImport(dst.deps, file, strategy);
+      const want = withLocal && strategy === 'skip' ? 'none' : 'done';
+      expect(dst.store.getByKey('octo/ps')!.analysis).toMatchObject({ status: want, error: null });
+      expect(dst.store.getByKey('octo/pn')!.analysis).toMatchObject({ status: 'none', error: null });
+      expect(dst.toolsStore.getByKey('example.com/p')!.analysis).toMatchObject({ status: want, error: null });
+    }
   });
 
   it('файл версии 1 (без tools) читается и импортируется', () => {

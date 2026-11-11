@@ -73,10 +73,12 @@ export async function chatCompletion(settings: Settings, messages: Array<{ role:
     try {
       const parsed = JSON.parse(text) as ChatResponse;
       const err = parsed.error;
-      msg = typeof err === 'string' ? err : err?.message ?? msg;
+      msg = typeof err === 'string' ? err : typeof err?.message === 'string' ? err.message : msg;
     } catch {
       /* оставляем сырой текст */
     }
+    // Ключ в JSON может быть экранирован (/, -) и в сыром тексте не найтись — маскируем и разобранное сообщение.
+    if (settings.llmApiKey) msg = msg.replaceAll(settings.llmApiKey, '***');
     if (useJsonMode && res.status === 400 && /response_format|json_object|json mode/i.test(msg)) {
       return chatCompletion(settings, messages, false, temperature);
     }

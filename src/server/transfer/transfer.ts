@@ -208,6 +208,10 @@ export function previewImport(store: LibraryStore, toolsStore: ToolsStore, file:
   };
 }
 
+/** «Идёт анализ» из файла не живёт: очереди в этом запуске нет — то же правило, что у recoverPending. */
+const settle = <A extends { status: string; summary: unknown; error: string | null }>(a: A): A =>
+  a.status === 'pending' ? { ...a, status: a.summary ? 'done' : 'none', error: null } : a;
+
 export function applyImport(deps: TransferDeps, file: ExportFile, strategy: DuplicateStrategy): ImportResult {
   const { store } = deps;
   const result: ImportResult = {
@@ -232,7 +236,7 @@ export function applyImport(deps: TransferDeps, file: ExportFile, strategy: Dupl
         // merge оставляет локальный аватар — тогда файл из импорта не должен его перезаписывать.
         const keepLocalAvatar = local && strategy === 'merge' && local.avatarPath;
         const avatarFromFile = keepLocalAvatar ? null : writeAvatarFromDataUrl(deps.dataDir, avatarDataUrl, imported.github.ownerLogin);
-        const candidate: Repo = { ...repoFields, key, avatarPath: avatarFromFile ?? null };
+        const candidate: Repo = { ...repoFields, key, avatarPath: avatarFromFile ?? null, analysis: settle(imported.analysis) };
 
         if (!local) {
           const existingId = store.getById(candidate.id);
@@ -296,7 +300,7 @@ function importTool(deps: TransferDeps, imported: ImportedTool, strategy: Duplic
     key,
     domain,
     source: { ...imported.source, iconPath: null, imagePath: null },
-    analysis: imported.analysis,
+    analysis: settle(imported.analysis),
     user: { ...imported.user, imagePath: null },
   };
   const w = (kind: ToolImageKind, dataUrl: string | null | undefined) => writeToolImage(dataDir, ops, id, kind, dataUrl);

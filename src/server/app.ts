@@ -84,8 +84,11 @@ export function buildApp(opts: AppOptions): AppContext {
   fs.mkdirSync(imagesDir, { recursive: true });
   const service = opts.service ?? new LibraryService({ store, settings, queue, log });
   const toolsService = opts.toolsService ?? new ToolsService({ store: toolsStore, settings, queue, imagesDir, log });
-  // После перезапуска возобновляет незавершённые анализы инструментов (для репозиториев это делает index.ts).
-  app.addHook('onReady', async () => toolsService.recoverPending());
+  // После перезапуска возобновляет незавершённые анализы (и для GitLib.exe: он тоже идёт через buildApp).
+  app.addHook('onReady', async () => {
+    service.recoverPending();
+    toolsService.recoverPending();
+  });
 
   // Защита от DNS rebinding: чужая страница, чьё имя указывает на 127.0.0.1, приходит с чужим Host.
   // При явном GITLIB_HOST (доступ из сети) проверка не включается — это выбор владельца, см. README.
@@ -152,6 +155,7 @@ export function buildApp(opts: AppOptions): AppContext {
     prefix: '/avatars/',
     decorateReply: false,
     maxAge: '7d',
+    setHeaders: (reply) => void reply.header('X-Content-Type-Options', 'nosniff'),
   });
 
   // Картинки инструментов: Content-Type из загрузчика не перепроверяется, поэтому файл не должен ни исполняться

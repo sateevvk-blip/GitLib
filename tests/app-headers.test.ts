@@ -45,6 +45,13 @@ describe('заголовки страницы приложения', () => {
     });
   }
 
+  it('/avatars/ отдаётся с nosniff', async () => {
+    fs.writeFileSync(path.join(dir, 'avatars', 'a.png'), 'x');
+    const res = await app.inject({ method: 'GET', url: '/avatars/a.png', headers: { host: 'localhost' } });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+  });
+
   it('GET /api/health без CSP', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/health', headers: { host: 'localhost' } });
     expect(res.statusCode).toBe(200);

@@ -40,8 +40,6 @@ export const config = {
   chatFileMaxBytes: 300_000,
   /** Чат: сохранённая структура репозитория считается свежей столько миллисекунд (если не менялся pushedAt). */
   chatTreeTtlMs: 24 * 60 * 60 * 1000,
-  /** «Инструменты»: локальные картинки (иконки, превью, свои). */
-  toolImagesDir: path.join(dataDir, 'tool-images'),
   toolTextMaxChars: 30_000,
   toolTextForLlmChars: 12_000,
   toolChatTextChars: 20_000,
