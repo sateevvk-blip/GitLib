@@ -34,6 +34,13 @@ export class GithubError extends AppError {
   }
 }
 
+/** Сбой загрузки чужой страницы или картинки (раздел «Инструменты»). */
+export class FetchError extends AppError {
+  constructor(message: string, code: string, extra?: Record<string, unknown>) {
+    super(message, 422, code, extra);
+  }
+}
+
 export class LlmError extends AppError {
   constructor(message: string, code = 'llm_error') {
     super(message, 502, code);

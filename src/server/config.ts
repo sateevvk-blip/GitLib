@@ -40,6 +40,21 @@ export const config = {
   chatFileMaxBytes: 300_000,
   /** Чат: сохранённая структура репозитория считается свежей столько миллисекунд (если не менялся pushedAt). */
   chatTreeTtlMs: 24 * 60 * 60 * 1000,
+  /** «Инструменты»: локальные картинки (иконки, превью, свои). */
+  toolImagesDir: path.join(dataDir, 'tool-images'),
+  toolTextMaxChars: 30_000,
+  toolTextForLlmChars: 12_000,
+  toolChatTextChars: 20_000,
+  /** Общий бюджет времени на загрузку чужой страницы вместе с редиректами. */
+  toolFetchTimeoutMs: 20_000,
+  /** Лимит на соединение и заголовки, на каждый шаг цепочки редиректов. */
+  toolFetchHeadersTimeoutMs: 10_000,
+  toolPageMaxBytes: 2_000_000,
+  /** Лимиты картинок из S3 (не перечислены в S5, но нужны вызывающему коду T6). */
+  toolFaviconMaxBytes: 512_000,
+  toolPreviewMaxBytes: 3_000_000,
+  toolRecommendMaxCandidates: 40,
+  toolRecommendChars: 24_000,
 };
 
 export function ensureDataDirs(): void {
