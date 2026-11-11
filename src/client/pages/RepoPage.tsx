@@ -112,7 +112,8 @@ export function RepoPage() {
       </main>
     );
   }
-  if (repoQuery.isError || !repo) {
+  // Сбой фонового опроса при уже загруженной записи — баннер ниже, а не «не найден»: иначе закроется редактор заметок с черновиком.
+  if (!repo) {
     return (
       <main className="page">
         <EmptyState mood="surprised" title="Репозиторий не найден" text={repoQuery.error ? errorMessage(repoQuery.error) : 'Возможно, он был удалён из библиотеки.'}>
@@ -187,6 +188,15 @@ export function RepoPage() {
       <Link to="/" className="back-link">
         <ArrowLeft size={14} /> Библиотека
       </Link>
+
+      {repoQuery.isError && (
+        <div className="error-box tool-notice" role="alert">
+          <span>Изменения на экране не потеряны, но обновить данные не удалось: {errorMessage(repoQuery.error)}</span>
+          <button type="button" className="btn btn-sm" onClick={() => void repoQuery.refetch()}>
+            Повторить
+          </button>
+        </div>
+      )}
 
       <header className="repo-head">
         <Avatar avatarPath={repo.avatarPath} name={repo.owner} size="lg" />

@@ -123,8 +123,8 @@ async function fetchReadme(base: string, token: string): Promise<string | null> 
     const text = await res.text();
     return text.length > config.readmeMaxChars ? `${text.slice(0, config.readmeMaxChars)}\n\n…(README обрезан)` : text;
   } catch (e) {
+    // Лимит не значит «README нет»: null заменил бы сохранённый README при обновлении.
     if (e instanceof GithubError && e.code === 'not_found') return null;
-    if (e instanceof GithubError && e.code === 'rate_limit') return null;
     throw e;
   }
 }
@@ -173,7 +173,8 @@ async function fetchLanguages(base: string, token: string): Promise<Record<strin
     const res = await githubFetch(`${base}/languages`, token);
     const data = (await res.json()) as Record<string, number>;
     return typeof data === 'object' && data ? data : {};
-  } catch {
+  } catch (e) {
+    if (e instanceof GithubError && e.code === 'rate_limit') throw e;
     return {};
   }
 }
