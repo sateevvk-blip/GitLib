@@ -68,7 +68,7 @@ export function RepoPage() {
   const chatHasReadme = Boolean(repo?.github.readme);
   useEffect(() => {
     if (!chatId || !chatName || !chatUrl || !chatBranch) return;
-    setChatTarget({ id: chatId, fullName: chatName, htmlUrl: chatUrl, branch: chatBranch, hasReadme: chatHasReadme });
+    setChatTarget({ kind: 'repo', id: chatId, fullName: chatName, htmlUrl: chatUrl, branch: chatBranch, hasReadme: chatHasReadme });
   }, [chatId, chatName, chatUrl, chatBranch, chatHasReadme]);
   useEffect(() => () => setChatTarget(null), []);
 

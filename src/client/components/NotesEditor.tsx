@@ -23,8 +23,10 @@ interface Props {
   onSave: (notes: string) => Promise<unknown>;
   disabled?: boolean;
   /** Репозиторий — для относительных ссылок в заметке. */
-  repoUrl: string;
-  branch: string;
+  /** Без адреса репозитория относительные ссылки не переписываются, картинки не загружаются (заметки инструмента). */
+  repoUrl?: string;
+  branch?: string;
+  placeholder?: string;
 }
 
 type Tool = { action: MarkdownAction; title: string; Icon: LucideIcon } | 'sep';
@@ -53,7 +55,7 @@ const MIN_HEIGHT = 160;
  * Заметки в Markdown: просмотр отформатированного текста, редактор с панелью
  * форматирования и автосохранение через 800 мс после последней правки.
  */
-export function NotesEditor({ value, onSave, disabled, repoUrl, branch }: Props) {
+export function NotesEditor({ value, onSave, disabled, repoUrl, branch, placeholder }: Props) {
   const [draft, setDraft] = useState(value);
   const [mode, setMode] = useState<'edit' | 'preview'>(value.trim() ? 'preview' : 'edit');
   const [state, setState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle');
@@ -220,7 +222,7 @@ export function NotesEditor({ value, onSave, disabled, repoUrl, branch }: Props)
           <textarea
             ref={area}
             className="textarea notes-area"
-            placeholder="Зачем мне этот проект, что проверить, куда применить, подводные камни… Поддерживается Markdown."
+            placeholder={placeholder ?? 'Зачем мне этот проект, что проверить, куда применить, подводные камни… Поддерживается Markdown.'}
             value={draft}
             onChange={(e) => change(e.target.value)}
             onKeyDown={onKey}

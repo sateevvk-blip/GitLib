@@ -13,6 +13,8 @@ interface Props {
   activeTags: string[];
   onToggleFavorite: (tool: ToolSummary) => void;
   onTagClick: (tag: string) => void;
+  /** Без превью — для подбора под задачу. */
+  compact?: boolean;
 }
 
 /** Превью-картинка; если её нет или она не загрузилась — плитка с буквой домена на миллиметровке. */
@@ -32,7 +34,7 @@ function Preview({ path, letter }: { path: string | null; letter: string }) {
   );
 }
 
-export function ToolCard({ tool, index = 0, activeTags, onToggleFavorite, onTagClick }: Props) {
+export function ToolCard({ tool, index = 0, activeTags, onToggleFavorite, onTagClick, compact = false }: Props) {
   const title = toolTitle(tool);
   const text = toolField(tool, 'summary') ?? toolDescription(tool);
   const category = toolCategory(tool);
@@ -43,14 +45,14 @@ export function ToolCard({ tool, index = 0, activeTags, onToggleFavorite, onTagC
   const letter = (Array.from(title.trim())[0] ?? tool.domain[0] ?? '?').toUpperCase();
 
   return (
-    <Link to={`/tools/${tool.id}`} className="card tool-card" style={{ '--i': Math.min(index, 10) } as CSSProperties}>
+    <Link to={`/tools/${tool.id}`} className={`card tool-card${compact ? ' tool-card-compact' : ''}`} style={{ '--i': Math.min(index, 10) } as CSSProperties}>
       <span className="card-index" aria-hidden="true">
         № {String(index + 1).padStart(3, '0')}
       </span>
-      <Preview path={previewPath} letter={letter} />
+      {!compact && <Preview path={previewPath} letter={letter} />}
       <div className="card-head">
         {/* Без иконки и без картинки буква уже стоит в превью — второй раз не повторяем */}
-        {(source.iconPath || previewPath) && <Avatar avatarPath={source.iconPath} name={letter} />}
+        {(compact || source.iconPath || previewPath) && <Avatar avatarPath={source.iconPath} name={letter} />}
         <div className="card-title">
           <div className="card-name tool-name" title={title}>
             {title}

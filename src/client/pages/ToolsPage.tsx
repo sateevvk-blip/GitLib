@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Plus, X } from 'lucide-react';
+import { Plus, Sparkles, X } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import type { ToolSortKey, ToolSummary } from '../../shared/types.js';
 import { useToolFacets, usePatchTool, useTools } from '../api/hooks';
 import { useToolsQuery } from '../lib/toolsQuery';
@@ -9,6 +10,7 @@ import { phrases, react, setAmbient } from '../mascot/store';
 import { AddToolDialog, AddToolForm } from '../components/AddToolDialog';
 import { ToolFilterRail } from '../components/ToolFilterRail';
 import { ToolCard } from '../components/ToolCard';
+import { RecommendPanel } from '../components/RecommendPanel';
 import { EmptyState } from '../components/EmptyState';
 
 const SORT_LABELS: Record<ToolSortKey, string> = {
@@ -25,6 +27,22 @@ export function ToolsPage() {
   const facets = useToolFacets();
   const patch = usePatchTool();
   const [adding, setAdding] = useState(false);
+  // Задача подбора живёт в адресе (?task=); результат — нет: он запрашивается только кнопкой.
+  const [params, setParams] = useSearchParams();
+  const rawTask = params.get('task') ?? '';
+  const task = rawTask.slice(0, 1000);
+  const [recommending, setRecommending] = useState(false);
+  // Слишком длинную задачу из адреса обрезаем и переписываем параметр.
+  useEffect(() => {
+    if (rawTask.length > 1000) setTask(rawTask.slice(0, 1000));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawTask]);
+  const setTask = (value: string | null) => {
+    const next = new URLSearchParams(window.location.search);
+    if (value) next.set('task', value);
+    else next.delete('task');
+    setParams(next, { replace: true });
+  };
 
   const total = facets.data?.total ?? 0;
   const items = tools.data?.items ?? [];
@@ -95,12 +113,29 @@ export function ToolsPage() {
                 </option>
               ))}
             </select>
+            <button type="button" className="btn" onClick={() => setRecommending(true)}>
+              <Sparkles size={16} />
+              Подобрать под задачу
+            </button>
             <button type="button" className="btn btn-primary" onClick={() => setAdding(true)}>
               <Plus size={16} />
               Добавить инструмент
             </button>
           </div>
         </div>
+
+        {(recommending || task) && (
+          <RecommendPanel
+            initialTask={task}
+            onTaskChange={setTask}
+            onClose={() => {
+              setRecommending(false);
+              setTask(null);
+            }}
+            activeTags={query.tags ?? []}
+            onTagClick={(tag) => toggleIn('tags', tag)}
+          />
+        )}
 
         {filtered && (
           <div className="active-filters">

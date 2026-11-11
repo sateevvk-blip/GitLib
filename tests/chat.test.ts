@@ -4,6 +4,7 @@ import { LibraryService } from '../src/server/library/service.js';
 import { ValidationError } from '../src/server/errors.js';
 import type { ChatMessage, Repo } from '../src/shared/types.js';
 import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_CHARS } from '../src/shared/types.js';
+import { STARTER_QUESTIONS, TOOL_STARTER_QUESTIONS, chatKey, chatLabel, chatShortName, getChatState, getHistory, openChat, saveHistory, setChatTarget, starterQuestions } from '../src/client/mascot/chat.js';
 import { makeGithub, makeRepo, makeSettings, makeStore } from './helpers.js';
 
 function history(n: number): ChatMessage[] {
@@ -94,5 +95,40 @@ describe('чат о репозитории: сервис', () => {
     await expect(service.chat(repo.id, [{ role: 'assistant', content: 'привет' }])).rejects.toBeInstanceOf(ValidationError);
     await expect(service.chat(repo.id, [{ role: 'user', content: '   ' }])).rejects.toBeInstanceOf(ValidationError);
     await expect(service.chat('nope', [{ role: 'user', content: 'Что это?' }])).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe('чат: цель и ключи истории (репозиторий и инструмент)', () => {
+  const repo = { kind: 'repo', id: 'abc', fullName: 'octo/tool', htmlUrl: 'https://github.com/octo/tool', branch: 'main', hasReadme: true } as const;
+  const tool = { kind: 'tool', id: 'abc', title: 'Three.js', url: 'https://threejs.org/', domain: 'threejs.org', hasText: true } as const;
+
+  it('ключ репозитория — голый id, у инструмента — с префиксом', () => {
+    expect(chatKey(repo)).toBe('abc');
+    expect(chatKey(tool)).toBe('tool:abc');
+  });
+
+  it('истории с одинаковым id не пересекаются', () => {
+    saveHistory(chatKey(repo), [{ role: 'user', content: 'про репозиторий' }]);
+    expect(getHistory(chatKey(tool))).toEqual([]);
+    saveHistory(chatKey(tool), [{ role: 'user', content: 'про инструмент' }]);
+    expect(getHistory(chatKey(repo))[0]?.content).toBe('про репозиторий');
+  });
+
+  it('подписи и стартовые вопросы зависят от вида', () => {
+    expect(chatLabel(repo)).toBe('octo/tool');
+    expect(chatShortName(repo)).toBe('tool');
+    expect(chatLabel(tool)).toBe('Three.js');
+    expect(starterQuestions(repo)).toBe(STARTER_QUESTIONS);
+    expect(starterQuestions(tool)).toBe(TOOL_STARTER_QUESTIONS);
+  });
+
+  it('та же цель не закрывает чат, смена вида при том же id — закрывает', () => {
+    setChatTarget(repo);
+    openChat();
+    setChatTarget({ ...repo, hasReadme: false });
+    expect(getChatState().open).toBe(true);
+    setChatTarget(tool);
+    expect(getChatState().open).toBe(false);
+    setChatTarget(null);
   });
 });

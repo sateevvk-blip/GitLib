@@ -16,6 +16,7 @@ import type {
   ToolFacets,
   ToolPatch,
   ToolQuery,
+  ToolRecommendation,
   ToolSummary,
   UserPatch,
 } from '../../shared/types.js';
@@ -109,6 +110,10 @@ export const api = {
   analyzeRepo: (id: string) => request<Repo>(`/api/repos/${encodeURIComponent(id)}/analyze`, { method: 'POST' }),
   chatRepo: (id: string, messages: ChatMessage[]) =>
     request<ChatReply>(`/api/repos/${encodeURIComponent(id)}/chat`, { method: 'POST', body: JSON.stringify({ messages }) }),
+
+  chatTool: (id: string, messages: ChatMessage[]) =>
+    request<ChatReply>(`/api/tools/${encodeURIComponent(id)}/chat`, { method: 'POST', body: JSON.stringify({ messages }) }),
+  recommendTools: (task: string) => request<ToolRecommendation>('/api/tools/recommend', { method: 'POST', body: JSON.stringify({ task }) }),
 
   listTools: (q: ToolQuery) => request<{ items: ToolSummary[]; total: number }>(`/api/tools?${toolQueryToParams(q)}`),
   toolFacets: () => request<ToolFacets>('/api/tools/facets'),

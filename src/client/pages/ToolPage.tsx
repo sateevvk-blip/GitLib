@@ -18,6 +18,10 @@ import { formatDate, formatDateTime, fullNumber, relativeDate } from '../lib/for
 import { useOnline } from '../lib/online';
 import { errorMessage, toast } from '../lib/toast';
 import { hold, phrases, react, release, setAmbient } from '../mascot/store';
+import { setChatTarget } from '../mascot/chat';
+
+/** Общий с репозиториями ключ: приглашение «спроси меня» — один раз за сессию. */
+const CHAT_INVITED_KEY = 'gitlib.chat.invited';
 
 const KEY_ANALYSIS = 'tool-analysis';
 const KEY_REFRESH = 'tool-refresh';
@@ -307,7 +311,32 @@ export function ToolPage() {
     setAmbient('idle', null);
   }, []);
 
-  // T11: здесь будет setChatTarget({ kind: 'tool', … }) с примитивами в зависимостях и setChatTarget(null) при уходе, как в RepoPage.
+  // Маскот знает, о каком инструменте можно спросить. Зависимости — примитивы: обновление записи
+  // (заметка, звёздочка, фоновый анализ) не должно закрывать открытый чат; уход со страницы — закрывает.
+  const llmReady = settings.data?.llmConfigured ?? false;
+  const chatId = tool?.id;
+  const chatTitle = tool ? toolTitle(tool) : undefined;
+  const chatUrl = tool?.url;
+  const chatDomain = tool?.domain;
+  const chatHasText = Boolean(tool?.source.text);
+  useEffect(() => {
+    if (!chatId || !chatTitle || !chatUrl || !chatDomain) return;
+    setChatTarget({ kind: 'tool', id: chatId, title: chatTitle, url: chatUrl, domain: chatDomain, hasText: chatHasText });
+  }, [chatId, chatTitle, chatUrl, chatDomain, chatHasText]);
+  useEffect(() => () => setChatTarget(null), []);
+
+  // Один раз за сессию подсказываем, что маскоту можно задать вопрос.
+  useEffect(() => {
+    if (!chatId || !llmReady) return;
+    try {
+      if (sessionStorage.getItem(CHAT_INVITED_KEY) === '1') return;
+      sessionStorage.setItem(CHAT_INVITED_KEY, '1');
+    } catch {
+      return;
+    }
+    const t = setTimeout(() => react('wink', phrases.toolChatInvite, 6000), 900);
+    return () => clearTimeout(t);
+  }, [chatId, llmReady]);
 
   // Реакция маскота на завершение фонового анализа
   useEffect(() => {
@@ -531,8 +560,8 @@ export function ToolPage() {
               </h2>
               <span className="label">Markdown · автосохранение</span>
             </div>
-            {/* T11 может сделать repoUrl и branch необязательными; пока NotesEditor требует обе строки. */}
-            <NotesEditor value={tool.user.notes} onSave={saveNotes} repoUrl={tool.url} branch="" />
+            <NotesEditor value={tool.user.notes} onSave={saveNotes} placeholder="Зачем мне этот инструмент, для какой задачи, что проверить, подводные камни… Поддерживается Markdown." />
+            <p className="tool-notes-hint">Картинки в заметках инструмента не показываются.</p>
           </section>
         </div>
 

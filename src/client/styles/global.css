@@ -4222,3 +4222,119 @@ h3 {
     display: none;
   }
 }
+
+/* Подбор под задачу: панель над сеткой каталога */
+.recommend {
+  margin-bottom: 22px;
+}
+.recommend-form {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.recommend-form .input {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+}
+.recommend-body:not(:empty) {
+  margin-top: 16px;
+  display: grid;
+  gap: 14px;
+}
+.recommend-skeleton {
+  display: grid;
+  gap: 8px;
+}
+.recommend-skeleton .skeleton {
+  min-height: 44px;
+}
+.recommend-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.recommend-notice {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.recommend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.recommend-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.recommend-why {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--cobalt-line);
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.recommend-why p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.recommend-fit {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border: 1px solid var(--cobalt-line);
+  border-radius: var(--radius);
+  color: var(--cobalt-ink);
+  background: var(--cobalt-soft);
+}
+.recommend-fit.is-medium {
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+  background: transparent;
+}
+.recommend-empty {
+  margin: 0;
+  font-weight: 600;
+}
+.recommend-comment {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 560px) {
+  .recommend-form {
+    flex-direction: column;
+  }
+  .recommend-form .input {
+    font-size: 16px; /* iOS не приближает страницу при фокусе */
+  }
+}
+.recommend-reason {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.recommend-why .btn-sm {
+  padding-left: 0;
+}
+.recommend-hint {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.tool-notes-hint {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}

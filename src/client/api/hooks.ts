@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, Tool, ToolPatch, ToolQuery, ToolSummary, UserPatch } from '../../shared/types.js';
+import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, Tool, ToolPatch, ToolQuery, ToolRecommendation, ToolSummary, UserPatch } from '../../shared/types.js';
 import { applyToolPatch } from '../../shared/merge.js';
+import type { ChatTarget } from '../mascot/chat';
 import { api, queryToParams, toolQueryToParams, type ManualTool } from './client';
 
 export const keys = {
@@ -230,17 +231,22 @@ export function useAnalyzeRepo() {
   });
 }
 
-type ChatVars = { id: string; messages: ChatMessage[] };
+type ChatVars = { target: ChatTarget; messages: ChatMessage[] };
+
+/** Подбор инструментов под задачу — мутация, а не запрос: вызов модели платный и не должен повторяться сам. */
+export function useRecommendTools(opts: Omit<Parameters<typeof useMutation<ToolRecommendation, Error, string>>[0], 'mutationFn'> = {}) {
+  return useMutation<ToolRecommendation, Error, string>({ ...opts, mutationFn: (task) => api.recommendTools(task) });
+}
 
 /**
- * Вопрос о репозитории. Запись не меняется, поэтому кэш не инвалидируется.
+ * Вопрос о репозитории или инструменте. Запись не меняется, поэтому кэш не инвалидируется.
  * Колбэки на уровне хука срабатывают даже после размонтирования панели чата —
  * ответ не теряется, если её закрыли, пока модель думала.
  */
-export function useRepoChat(opts: Omit<Parameters<typeof useMutation<ChatReply, Error, ChatVars>>[0], 'mutationFn'> = {}) {
+export function useChatMutation(opts: Omit<Parameters<typeof useMutation<ChatReply, Error, ChatVars>>[0], 'mutationFn'> = {}) {
   return useMutation<ChatReply, Error, ChatVars>({
     ...opts,
-    mutationFn: ({ id, messages }) => api.chatRepo(id, messages),
+    mutationFn: ({ target, messages }) => (target.kind === 'repo' ? api.chatRepo(target.id, messages) : api.chatTool(target.id, messages)),
   });
 }
 
