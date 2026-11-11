@@ -75,18 +75,15 @@ export function usePatchTool() {
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ['tools'] });
       await qc.cancelQueries({ queryKey: keys.tool(id) });
-      const prev = qc.getQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] });
       qc.setQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] }, (d) =>
         d && { ...d, items: d.items.map((t) => (t.id === id && patch.favorite !== undefined ? { ...t, user: { ...t.user, favorite: patch.favorite } } : t)) },
       );
       const prevTool = qc.getQueryData<Tool>(keys.tool(id));
       if (prevTool) qc.setQueryData<Tool>(keys.tool(id), applyToolPatch(prevTool, patch));
-      return { prev, prevTool };
     },
-    onError: (_e, { id }, ctx) => {
-      ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data));
-      if (ctx?.prevTool) qc.setQueryData(keys.tool(id), ctx.prevTool);
-    },
+    // Не снимок, а перечитывание: снимок затёр бы правку, успешно сохранённую, пока шёл этот запрос.
+    // Списки перечитает onSettled.
+    onError: (_e, { id }) => void qc.invalidateQueries({ queryKey: keys.tool(id) }),
     onSuccess: (tool) => qc.setQueryData(keys.tool(tool.id), tool),
     onSettled: invalidate,
   });
@@ -182,11 +179,9 @@ export function usePatchRepo() {
       await qc.cancelQueries({ queryKey: keys.repo(id) });
       const prev = qc.getQueryData<Repo>(keys.repo(id));
       if (prev) qc.setQueryData<Repo>(keys.repo(id), { ...prev, user: { ...prev.user, ...patch } });
-      return { prev };
     },
-    onError: (_e, { id }, ctx) => {
-      if (ctx?.prev) qc.setQueryData(keys.repo(id), ctx.prev);
-    },
+    // Не снимок, а перечитывание: снимок затёр бы правку, успешно сохранённую, пока шёл этот запрос.
+    onError: (_e, { id }) => void qc.invalidateQueries({ queryKey: keys.repo(id) }),
     onSuccess: (repo) => {
       qc.setQueryData(keys.repo(repo.id), repo);
       invalidate();
