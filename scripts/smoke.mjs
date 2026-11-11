@@ -60,6 +60,8 @@ try {
   const html = await index.text();
   check('клиент отдаётся', index.ok && html.includes('<div id="root">'));
 
+  check('CSP страницы', (index.headers.get('content-security-policy') ?? '').includes("connect-src 'self'"));
+
   const spa = await fetch(`${base}/repo/does-not-exist`);
   check('SPA fallback', spa.ok && (await spa.text()).includes('<div id="root">'));
 

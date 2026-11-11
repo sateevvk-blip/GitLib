@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { openDatabase } from './db/database.js';
 import { LibraryStore } from './library/store.js';
 import { LibraryService } from './library/service.js';
@@ -168,6 +169,29 @@ export function buildApp(opts: AppOptions): AppContext {
   // Собранный клиент (production)
   const clientDir = opts.clientDir;
   if (clientDir && fs.existsSync(path.join(clientDir, 'index.html'))) {
+    const indexPath = path.join(clientDir, 'index.html');
+    const indexHtml = fs.readFileSync(indexPath, 'utf8');
+    // Хеши встроенных скриптов без src считаются из отдаваемого файла: правка скрипта не расходится с политикой.
+    // shortcut: `[^>]*` собьётся на `>` внутри значения атрибута script, сейчас в index.html таких нет — перейти на HTML-парсер, если появятся.
+    // Браузер перед хешированием нормализует CRLF/CR в LF — делаем так же.
+    const scriptHashes = [...indexHtml.matchAll(/<script(?![^>]*\ssrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi)]
+      .map((m) => `'sha256-${createHash('sha256').update((m[1] ?? '').replace(/\r\n?/g, '\n')).digest('base64')}'`);
+    const csp = [
+      "default-src 'self'",
+      `script-src 'self' ${scriptHashes.join(' ')}`.trim(),
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https: http:",
+      "font-src 'self' data:",
+      "connect-src 'self'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'none'",
+    ].join('; ');
+    const pageHeaders = (reply: { header: (k: string, v: string) => unknown }) => {
+      reply.header('X-DNS-Prefetch-Control', 'off');
+      reply.header('Content-Security-Policy', csp);
+    };
     void app.register(fastifyStatic, {
       root: clientDir,
       prefix: '/',
@@ -180,6 +204,7 @@ export function buildApp(opts: AppOptions): AppContext {
         // открытая вкладка будет просить старые файлы).
         if (filePath.includes(`${path.sep}assets${path.sep}`)) reply.header('Cache-Control', 'public, max-age=31536000, immutable');
         else reply.header('Cache-Control', 'no-cache');
+        if (path.resolve(filePath) === path.resolve(indexPath)) pageHeaders(reply);
       },
     });
     app.setNotFoundHandler((req, reply) => {
@@ -191,10 +216,11 @@ export function buildApp(opts: AppOptions): AppContext {
         void reply.status(404).type('text/plain').send('Not found');
         return;
       }
+      pageHeaders(reply);
       void reply
         .header('Cache-Control', 'no-cache')
         .type('text/html')
-        .send(fs.readFileSync(path.join(clientDir, 'index.html'), 'utf8'));
+        .send(indexHtml);
     });
   } else {
     app.setNotFoundHandler((_req, reply) => {
