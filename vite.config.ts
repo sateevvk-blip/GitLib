@@ -31,6 +31,7 @@ export default defineConfig({
         bypass: (req) => (/\.tsx?(\?|$)/.test(req.url ?? '') ? req.url : undefined),
       },
       '/avatars': `http://localhost:${port}`,
+      '/tool-images': `http://localhost:${port}`,
     },
   },
 });

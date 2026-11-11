@@ -9,7 +9,7 @@ import {
   emptyToolAnalysis,
   mergeImportedTool,
 } from '../src/shared/merge.js';
-import { toolField } from '../src/shared/tools.js';
+import { isAnalysisStale, toolField } from '../src/shared/tools.js';
 import type { Tool, ToolAnalysis } from '../src/shared/types.js';
 
 const done = (generatedAt: string, summary: string): ToolAnalysis => ({ ...emptyToolAnalysis(), status: 'done', summary, generatedAt });
@@ -109,5 +109,31 @@ describe('mergeImportedTool', () => {
     const r = mergeImportedTool(local, withUser({ ...imported, analysis: emptyToolAnalysis() }, { notes: 'локальная' }), 'merge');
     expect(r.analysis.summary).toBe('local AI');
     expect(r.user.notes).toBe('локальная');
+  });
+});
+
+describe('isAnalysisStale', () => {
+  const analysed = (basedOn: string | null, source = '2026-01-02T00:00:00.000Z'): Tool => ({
+    ...makeTool(),
+    source: makeSource({ fetchedAt: source }),
+    analysis: { ...done('2026-01-03', 'AI'), basedOn: { sourceFetchedAt: basedOn, sourceStatus: 'ok', chars: 10 } },
+  });
+
+  it('свежий анализ — false; после refresh — true', () => {
+    const t = analysed('2026-01-02T00:00:00.000Z');
+    expect(isAnalysisStale(t)).toBe(false);
+    expect(isAnalysisStale(applyToolSource(t, makeSource({ fetchedAt: '2026-01-05T00:00:00.000Z' })))).toBe(true);
+  });
+
+  it('ручная карточка с анализом после первого refresh — true', () => {
+    const manual = analysed(null, '2026-01-02T00:00:00.000Z');
+    expect(isAnalysisStale({ ...manual, source: makeSource({ status: 'manual', fetchedAt: null }) })).toBe(false);
+    expect(isAnalysisStale(manual)).toBe(true);
+  });
+
+  it('статусы none и failed — false', () => {
+    const t = analysed('2025-01-01T00:00:00.000Z');
+    expect(isAnalysisStale({ ...t, analysis: { ...t.analysis, status: 'none' } })).toBe(false);
+    expect(isAnalysisStale({ ...t, analysis: { ...t.analysis, status: 'failed' } })).toBe(false);
   });
 });

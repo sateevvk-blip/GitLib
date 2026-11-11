@@ -9,6 +9,7 @@ import { analyzeRepo, chatAboutRepo, selectChatFiles } from '../ai/analyzer.js';
 import { rankFiles, readableEntries, type ChatContext } from '../ai/context.js';
 import { RepoContents, githubContentSource, type ContentSource } from './contents.js';
 import { config } from '../config.js';
+import { JobQueue } from './queue.js';
 import { DuplicateError, NotFoundError, ValidationError } from '../errors.js';
 
 export interface ServiceDeps {
@@ -19,6 +20,8 @@ export interface ServiceDeps {
   ai?: { analyzeRepo: typeof analyzeRepo; chatAboutRepo?: typeof chatAboutRepo; selectChatFiles?: typeof selectChatFiles };
   /** Источник структуры и файлов репозитория для чата; подменяется в тестах. */
   contents?: ContentSource;
+  /** Общая очередь фоновых задач; без неё сервис создаёт свою. */
+  queue?: JobQueue;
   log?: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 }
 
@@ -33,12 +36,11 @@ export class LibraryService {
   private readonly ai: { analyzeRepo: typeof analyzeRepo; chatAboutRepo: typeof chatAboutRepo; selectChatFiles: typeof selectChatFiles };
   private readonly contents: RepoContents;
   private readonly log: NonNullable<ServiceDeps['log']>;
-  private readonly queue: string[] = [];
-  private readonly queued = new Set<string>();
-  private running = false;
+  private readonly queue: JobQueue;
 
   constructor(deps: ServiceDeps) {
     this.store = deps.store;
+    this.queue = deps.queue ?? new JobQueue();
     this.settings = deps.settings;
     this.github = deps.github ?? { fetchRepository, downloadAvatar };
     this.ai = {
@@ -241,34 +243,19 @@ export class LibraryService {
   }
 
   pendingCount(): number {
-    return this.queue.length + (this.running ? 1 : 0);
+    return this.queue.size();
   }
 
   private enqueueAnalysis(id: string): void {
-    if (this.queued.has(id)) return;
-    this.queued.add(id);
-    this.queue.push(id);
-    void this.drain();
-  }
-
-  private async drain(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
-    try {
-      while (this.queue.length > 0) {
-        const id = this.queue.shift()!;
-        this.queued.delete(id);
-        if (!this.store.getById(id)) continue;
-        try {
-          await this.runAnalysis(id);
-        } catch (e) {
-          // Запись удалили, пока шёл анализ: без catch отказ промиса без обработчика роняет процесс.
-          this.log.warn(`AI-анализ пропущен (${id}): ${e instanceof Error ? e.message : String(e)}`);
-        }
+    this.queue.enqueue(`repo:${id}`, async () => {
+      if (!this.store.getById(id)) return;
+      try {
+        await this.runAnalysis(id);
+      } catch (e) {
+        // Запись удалили, пока шёл анализ.
+        this.log.warn(`AI-анализ пропущен (${id}): ${e instanceof Error ? e.message : String(e)}`);
       }
-    } finally {
-      this.running = false;
-    }
+    });
   }
 
   // ---------- коллекции ----------

@@ -51,3 +51,11 @@ export function toolField<K extends keyof ToolFieldValues>(t: ToolSummary, field
 export function isOverridden(t: ToolSummary, field: keyof ToolOverrides): boolean {
   return t.user.overrides[field] !== undefined;
 }
+
+/** Источник новее анализа: страницу обновили после того, как модель её прочитала. */
+export function isAnalysisStale(t: ToolSummary): boolean {
+  const { analysis, source } = t;
+  if (analysis.status !== 'done' || !analysis.basedOn || !source.fetchedAt) return false;
+  const based = analysis.basedOn.sourceFetchedAt;
+  return based === null || based < source.fetchedAt;
+}

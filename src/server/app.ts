@@ -5,6 +5,11 @@ import path from 'node:path';
 import { openDatabase } from './db/database.js';
 import { LibraryStore } from './library/store.js';
 import { LibraryService } from './library/service.js';
+import type { DatabaseSync } from 'node:sqlite';
+import { JobQueue } from './library/queue.js';
+import { ToolsStore } from './tools/store.js';
+import { ToolsService } from './tools/service.js';
+import { registerToolRoutes } from './routes/tools.js';
 import { SettingsStore } from './settings.js';
 import { AppError } from './errors.js';
 import { registerRepoRoutes } from './routes/repos.js';
@@ -24,6 +29,8 @@ export interface AppOptions {
   service?: LibraryService;
   settings?: SettingsStore;
   store?: LibraryStore;
+  toolsService?: ToolsService;
+  toolsStore?: ToolsStore;
   /** Остановка по `POST /api/shutdown` (значок в трее). Без него маршрута нет. */
   onShutdown?: () => void;
 }
@@ -33,6 +40,8 @@ export interface AppContext {
   store: LibraryStore;
   settings: SettingsStore;
   service: LibraryService;
+  toolsStore: ToolsStore;
+  toolsService: ToolsService;
 }
 
 export function buildApp(opts: AppOptions): AppContext {
@@ -58,19 +67,24 @@ export function buildApp(opts: AppOptions): AppContext {
     }
   });
 
-  const store = opts.store ?? new LibraryStore(openDatabase(opts.dbPath));
+  // Одно соединение с базой на оба хранилища; открывается лениво — тесты передают готовое хранилище.
+  let db: DatabaseSync | undefined;
+  const getDb = (): DatabaseSync => (db ??= openDatabase(opts.dbPath));
+  const store = opts.store ?? new LibraryStore(getDb());
+  const toolsStore = opts.toolsStore ?? new ToolsStore(getDb(), opts.dataDir);
   const settings = opts.settings ?? new SettingsStore(opts.settingsPath, process.env, opts.dataDir, opts.dbPath);
-  const service =
-    opts.service ??
-    new LibraryService({
-      store,
-      settings,
-      log: {
-        info: (m) => app.log.info(m),
-        warn: (m) => app.log.warn(m),
-        error: (m) => app.log.error(m),
-      },
-    });
+  const log = {
+    info: (m: string) => app.log.info(m),
+    warn: (m: string) => app.log.warn(m),
+    error: (m: string) => app.log.error(m),
+  };
+  const queue = new JobQueue();
+  const imagesDir = path.join(opts.dataDir, 'tool-images');
+  fs.mkdirSync(imagesDir, { recursive: true });
+  const service = opts.service ?? new LibraryService({ store, settings, queue, log });
+  const toolsService = opts.toolsService ?? new ToolsService({ store: toolsStore, settings, queue, imagesDir, log });
+  // После перезапуска возобновляет незавершённые анализы инструментов (для репозиториев это делает index.ts).
+  app.addHook('onReady', async () => toolsService.recoverPending());
 
   // Защита от DNS rebinding: чужая страница, чьё имя указывает на 127.0.0.1, приходит с чужим Host.
   // При явном GITLIB_HOST (доступ из сети) проверка не включается — это выбор владельца, см. README.
@@ -107,6 +121,7 @@ export function buildApp(opts: AppOptions): AppContext {
     version: config.appVersion,
     dataDir: opts.dataDir,
     repos: store.count(),
+    tools: toolsStore.count(),
     pendingAnalyses: service.pendingCount(),
   }));
 
@@ -123,6 +138,7 @@ export function buildApp(opts: AppOptions): AppContext {
   }
 
   registerRepoRoutes(app, service);
+  registerToolRoutes(app, toolsService);
   registerCollectionRoutes(app, service);
   registerSettingsRoutes(app, settings);
   registerTransferRoutes(app, { store, dataDir: opts.dataDir, appVersion: config.appVersion });
@@ -135,6 +151,18 @@ export function buildApp(opts: AppOptions): AppContext {
     prefix: '/avatars/',
     decorateReply: false,
     maxAge: '7d',
+  });
+
+  // Картинки инструментов: Content-Type из загрузчика не перепроверяется, поэтому файл не должен ни исполняться
+  // (sandbox), ни переопределять тип (nosniff) — SVG с скриптом откроется мёртвым.
+  void app.register(fastifyStatic, {
+    root: imagesDir,
+    prefix: '/tool-images/',
+    decorateReply: false,
+    setHeaders(reply) {
+      reply.header('X-Content-Type-Options', 'nosniff');
+      reply.header('Content-Security-Policy', 'sandbox');
+    },
   });
 
   // Собранный клиент (production)
@@ -155,7 +183,7 @@ export function buildApp(opts: AppOptions): AppContext {
       },
     });
     app.setNotFoundHandler((req, reply) => {
-      if (req.url.startsWith('/api/') || req.url.startsWith('/avatars/')) {
+      if (req.url.startsWith('/api/') || req.url.startsWith('/avatars/') || req.url.startsWith('/tool-images/')) {
         void reply.status(404).send({ error: 'Не найдено', code: 'not_found' });
         return;
       }
@@ -174,5 +202,5 @@ export function buildApp(opts: AppOptions): AppContext {
     });
   }
 
-  return { app, store, settings, service };
+  return { app, store, settings, service, toolsStore, toolsService };
 }
