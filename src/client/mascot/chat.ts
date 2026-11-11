@@ -2,19 +2,22 @@ import { useSyncExternalStore } from 'react';
 import type { ChatMessage } from '../../shared/types.js';
 import { CHAT_HISTORY_LIMIT } from '../../shared/types.js';
 
-/** Репозиторий, о котором сейчас можно спросить маскота (задаётся страницей репозитория). */
-export interface ChatTarget {
-  id: string;
-  fullName: string;
-  htmlUrl: string;
-  branch: string;
-  hasReadme: boolean;
-}
+/** О чём сейчас можно спросить маскота: репозиторий или инструмент (задаётся страницей записи). */
+export type ChatTarget =
+  | { kind: 'repo'; id: string; fullName: string; htmlUrl: string; branch: string; hasReadme: boolean }
+  | { kind: 'tool'; id: string; title: string; url: string; domain: string; hasText: boolean };
+
+/** Ключ истории и ожидания. У репозитория — голый id (так лежат истории в открытых вкладках), у инструмента — с префиксом. */
+export const chatKey = (t: Pick<ChatTarget, 'kind' | 'id'>): string => (t.kind === 'repo' ? t.id : `tool:${t.id}`);
+export const chatLabel = (t: ChatTarget): string => (t.kind === 'repo' ? t.fullName : t.title);
+export const chatShortName = (t: ChatTarget): string => (t.kind === 'repo' ? (t.fullName.split('/')[1] ?? t.fullName) : t.title);
+export const starterQuestions = (t: ChatTarget): readonly string[] => (t.kind === 'repo' ? STARTER_QUESTIONS : TOOL_STARTER_QUESTIONS);
+
 
 interface ChatState {
   target: ChatTarget | null;
   open: boolean;
-  /** Репозиторий, по которому сейчас ждём ответ модели (переживает закрытие панели). */
+  /** Ключ записи (chatKey), по которой сейчас ждём ответ модели (переживает закрытие панели). */
   pendingId: string | null;
 }
 
@@ -29,8 +32,8 @@ function set(next: ChatState): void {
 /** Страница репозитория сообщает, о чём можно спросить; уход со страницы (null) закрывает чат. */
 export function setChatTarget(target: ChatTarget | null): void {
   if (!target && !state.target) return;
-  const sameRepo = Boolean(target && state.target && target.id === state.target.id);
-  set({ ...state, target, open: sameRepo ? state.open : false });
+  const same = Boolean(target && state.target && chatKey(target) === chatKey(state.target));
+  set({ ...state, target, open: same ? state.open : false });
 }
 
 export function openChat(): void {
@@ -52,6 +55,8 @@ export function setChatPending(id: string | null): void {
   if (state.pendingId === id) return;
   set({ ...state, pendingId: id });
 }
+
+export const getChatState = (): ChatState => state;
 
 export function useChat(): ChatState {
   return useSyncExternalStore(
@@ -114,6 +119,8 @@ export function scrollAnchor(previousLength: number, history: readonly ChatMessa
   const grew = history.length > previousLength;
   return grew && history[history.length - 1]?.role === 'assistant' ? 'question' : 'bottom';
 }
+
+export const TOOL_STARTER_QUESTIONS: readonly string[] = ['Подойдёт ли для моей задачи?', 'Как это подключить?', 'Какие есть ограничения?'];
 
 export const STARTER_QUESTIONS: readonly string[] = [
   'Как установить и запустить?',

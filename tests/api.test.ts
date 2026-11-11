@@ -89,13 +89,16 @@ describe('REST API', () => {
     expect(badStatus.statusCode).toBe(400);
   });
 
-  it('POST /analyze?wait=1 выполняет анализ, пользовательские данные целы', async () => {
+  it('POST /analyze?wait=1 выполняет анализ один раз, пользовательские данные целы', async () => {
+    await new Promise((r) => setTimeout(r, 20)); // очередь от добавления успевает отработать
+    const before = analyzeCalls;
     const res = await app.inject({ method: 'POST', url: `/api/repos/${id}/analyze?wait=1` });
     expect(res.statusCode).toBe(200);
     const repo = res.json<Repo>();
     expect(repo.analysis.status).toBe('done');
     expect(repo.user.notes).toBe('Заметка');
-    expect(analyzeCalls).toBeGreaterThan(0);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(analyzeCalls - before).toBe(1);
   });
 
   it('POST /chat отвечает на вопрос о репозитории и проверяет тело', async () => {

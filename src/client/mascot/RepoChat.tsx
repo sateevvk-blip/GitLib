@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Eraser, FileText, SendHorizontal, X } from 'lucide-react';
 import type { ChatMessage } from '../../shared/types.js';
 import { CHAT_MESSAGE_MAX_CHARS } from '../../shared/types.js';
-import { useRepoChat, useSettings } from '../api/hooks';
+import { useChatMutation, useSettings } from '../api/hooks';
 import { Markdown } from '../components/Markdown';
 import { errorMessage } from '../lib/toast';
 import { useOnline } from '../lib/online';
 import { CHARACTERS } from './characters';
 import { useCharacter } from './choice';
-import { STARTER_QUESTIONS, closeChat, getHistory, saveHistory, scrollAnchor, setChatPending, useChat, type ChatTarget } from './chat';
+import { chatKey, chatLabel, chatShortName, closeChat, getHistory, saveHistory, scrollAnchor, setChatPending, starterQuestions, useChat, type ChatTarget } from './chat';
 import { hold, phrases, react, release } from './store';
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
 const HOLD_KEY = 'chat';
 
 /**
- * Чат о репозитории — открывается кликом по маскоту на странице репозитория.
+ * Чат о репозитории или инструменте — открывается кликом по маскоту на странице записи.
  * История живёт в браузере на сессию вкладки, запись в библиотеке не меняется.
  * Ответ сохраняется в историю даже если панель закрыли, пока модель думала.
  */
@@ -29,7 +29,8 @@ export function RepoChat({ target }: Props) {
   const online = useOnline();
   const character = CHARACTERS[useCharacter()];
   const { pendingId } = useChat();
-  const [history, setHistory] = useState<ChatMessage[]>(() => getHistory(target.id));
+  const key = chatKey(target);
+  const [history, setHistory] = useState<ChatMessage[]>(() => getHistory(key));
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -38,33 +39,35 @@ export function RepoChat({ target }: Props) {
   const seenLength = useRef(history.length);
   const anchor = useRef<'question' | 'bottom'>('bottom');
 
-  const chat = useRepoChat({
-    onMutate: ({ id }) => {
-      setChatPending(id);
-      hold('thinking', phrases.chatThinking, HOLD_KEY);
+  const chat = useChatMutation({
+    onMutate: ({ target: t }) => {
+      setChatPending(chatKey(t));
+      hold('thinking', t.kind === 'tool' ? phrases.toolChatThinking : phrases.chatThinking, HOLD_KEY);
     },
-    onSuccess: (r, { id, messages }) => {
-      const next = saveHistory(id, [...messages, { role: 'assistant', content: r.reply, ...(r.sources.length ? { sources: r.sources } : {}) }]);
+    onSuccess: (r, { target: t, messages }) => {
+      const k = chatKey(t);
+      const next = saveHistory(k, [...messages, { role: 'assistant', content: r.reply, ...(r.sources.length ? { sources: r.sources } : {}) }]);
       setNotice(r.notice);
-      if (id === target.id) setHistory(next);
+      if (k === key) setHistory(next);
       react('happy', phrases.chatReplied, 2500);
       inputRef.current?.focus();
     },
-    onError: (e, { id }) => {
-      if (id === target.id) setError(errorMessage(e));
+    onError: (e, { target: t }) => {
+      if (chatKey(t) === key) setError(errorMessage(e));
       react('dizzy', phrases.chatFailed, 3500);
     },
-    onSettled: (_r, _e, { id }) => {
+    onSettled: (_r, _e, { target: t }) => {
       setChatPending(null);
       release(HOLD_KEY);
-      if (id === target.id) setHistory(getHistory(id));
+      if (chatKey(t) === key) setHistory(getHistory(key));
     },
   });
 
   const llmConfigured = settings.data?.llmConfigured ?? false;
-  const pending = chat.isPending || pendingId === target.id;
+  const pending = chat.isPending || pendingId === key;
   const canAsk = llmConfigured && online && !pending;
-  const shortName = target.fullName.split('/')[1] ?? target.fullName;
+  const shortName = chatShortName(target);
+  const isTool = target.kind === 'tool';
   // Вопрос без ответа (панель закрыли до ответа, и он не пришёл) — предлагаем повторить.
   const unanswered = !pending && !error && history[history.length - 1]?.role === 'user';
 
@@ -74,8 +77,8 @@ export function RepoChat({ target }: Props) {
 
   // Панель закрыли, а ответ пришёл позже — при новом открытии показываем актуальную историю.
   useEffect(() => {
-    if (!pending) setHistory(getHistory(target.id));
-  }, [pending, target.id]);
+    if (!pending) setHistory(getHistory(key));
+  }, [pending, key]);
 
   // Новый ответ показываем с вопроса, а не с конца — длинный ответ читается сверху вниз.
   // Якорь выбирается при изменении длины истории и держится, пока эффект срабатывает
@@ -101,13 +104,13 @@ export function RepoChat({ target }: Props) {
   const ask = (messages: ChatMessage[]) => {
     setError(null);
     setNotice(null);
-    chat.mutate({ id: target.id, messages });
+    chat.mutate({ target, messages });
   };
 
   const send = (text: string) => {
     const content = text.trim().slice(0, CHAT_MESSAGE_MAX_CHARS);
     if (!content || !canAsk) return;
-    const next = saveHistory(target.id, [...history, { role: 'user', content }]);
+    const next = saveHistory(key, [...history, { role: 'user', content }]);
     setHistory(next);
     setDraft('');
     ask(next);
@@ -118,7 +121,7 @@ export function RepoChat({ target }: Props) {
   };
 
   const clear = () => {
-    setHistory(saveHistory(target.id, []));
+    setHistory(saveHistory(key, []));
     setError(null);
     setNotice(null);
     inputRef.current?.focus();
@@ -139,12 +142,12 @@ export function RepoChat({ target }: Props) {
   };
 
   return (
-    <section className="chat-panel" role="dialog" aria-label={`Чат о ${target.fullName}`} onKeyDown={onPanelKeyDown}>
+    <section className="chat-panel" role="dialog" aria-label={`Чат о ${chatLabel(target)}`} onKeyDown={onPanelKeyDown}>
       <header className="chat-head">
         <div className="chat-title">
           <strong>{character.name}</strong>
-          <span className="chat-repo" title={target.fullName}>
-            {target.fullName}
+          <span className="chat-repo" title={chatLabel(target)}>
+            {chatLabel(target)}
           </span>
         </div>
         <div className="chat-tools">
@@ -168,12 +171,12 @@ export function RepoChat({ target }: Props) {
           </div>
         ) : (
           <div className="chat-msg">
-            <div className="chat-bubble">{phrases.chatWelcome(shortName, target.hasReadme, online)}</div>
+            <div className="chat-bubble">{target.kind === 'tool' ? phrases.toolChatWelcome(shortName, target.hasText, online) : phrases.chatWelcome(shortName, target.hasReadme, online)}</div>
           </div>
         )}
         {llmConfigured && history.length === 0 && (
           <div className="chat-chips">
-            {STARTER_QUESTIONS.map((q) => (
+            {starterQuestions(target).map((q) => (
               <button type="button" key={q} className="chip chat-chip" onClick={() => send(q)} disabled={!canAsk}>
                 {q}
               </button>
@@ -182,15 +185,30 @@ export function RepoChat({ target }: Props) {
         )}
         {history.map((m, i) => (
           <div key={i} className={`chat-msg${m.role === 'user' ? ' is-user' : ''}`}>
-            <div className="chat-bubble">{m.role === 'assistant' ? <Markdown markdown={m.content} repoUrl={target.htmlUrl} branch={target.branch} /> : m.content}</div>
+            <div className="chat-bubble">
+              {m.role !== 'assistant' ? (
+                m.content
+              ) : target.kind === 'repo' ? (
+                <Markdown markdown={m.content} repoUrl={target.htmlUrl} branch={target.branch} noImages />
+              ) : (
+                <Markdown markdown={m.content} noImages />
+              )}
+            </div>
             {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
-              <div className="chat-sources" title="Файлы репозитория, которые прочитал напарник">
+              <div className="chat-sources" title={isTool ? 'Ответ основан на сохранённом тексте страницы' : 'Файлы репозитория, которые прочитал напарник'}>
                 <FileText size={12} />
-                {m.sources.map((path) => (
-                  <a key={path} href={`${target.htmlUrl}/blob/${target.branch}/${path}`} target="_blank" rel="noreferrer">
-                    {path}
+                {target.kind === 'repo' ? (
+                  m.sources.map((path) => (
+                    <a key={path} href={`${target.htmlUrl}/blob/${target.branch}/${path}`} target="_blank" rel="noreferrer">
+                      {path}
+                    </a>
+                  ))
+                ) : (
+                  // Адрес — из нашей базы, а не из ответа сервера.
+                  <a href={target.url} target="_blank" rel="noopener noreferrer">
+                    {target.domain}
                   </a>
-                ))}
+                )}
               </div>
             )}
           </div>

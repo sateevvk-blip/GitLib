@@ -183,10 +183,158 @@ export interface SettingsPatch {
   llmTimeoutSec?: number;
 }
 
+// ───── Инструменты (сайты, сервисы, библиотеки) ─────
+// Три блока, как у репозитория: source (загружено со страницы), analysis (AI), user (личное).
+
+export type ToolSourceStatus = 'ok' | 'partial' | 'failed' | 'manual';
+
+/** Загруженное со страницы; заменяется целиком при «Обновить страницу». */
+export interface ToolSource {
+  status: ToolSourceStatus;
+  /** Адрес после редиректов. */
+  finalUrl: string | null;
+  title: string | null;
+  description: string | null;
+  siteName: string | null;
+  lang: string | null;
+  /** Очищенный текст страницы; в списке не отдаётся. */
+  text: string | null;
+  textChars: number;
+  /** "tool-images/<id>-icon.png" */
+  iconPath: string | null;
+  /** "tool-images/<id>-cover.jpg" */
+  imagePath: string | null;
+  fetchedAt: string | null;
+  /** Русское сообщение, если status = failed. */
+  error: string | null;
+}
+
+export interface ToolLimitation {
+  text: string;
+  /** Дословная цитата из source.text. */
+  evidence: string;
+}
+
+/** Результат AI-анализа; заменяется целиком при повторном анализе. */
+export interface ToolAnalysis {
+  status: AnalysisStatus;
+  summary: string | null;
+  purpose: string | null;
+  audience: string | null;
+  features: string[];
+  useCases: string[];
+  limitations: ToolLimitation[];
+  suggestedTags: string[];
+  suggestedCategory: string | null;
+  model: string | null;
+  generatedAt: string | null;
+  error: string | null;
+  basedOn: { sourceFetchedAt: string | null; sourceStatus: ToolSourceStatus; chars: number } | null;
+}
+
+/** Ручные правки полей сводки; undefined = не правлено. */
+export interface ToolOverrides {
+  summary?: string;
+  purpose?: string;
+  audience?: string;
+  features?: string[];
+  useCases?: string[];
+  limitations?: string[];
+}
+
+/** Личное; автоматика никогда не трогает. */
+export interface ToolUser {
+  /** null → source.title, затем домен. */
+  title: string | null;
+  description: string | null;
+  /** null → analysis.suggestedCategory. */
+  category: string | null;
+  tags: string[];
+  notes: string;
+  favorite: boolean;
+  /** false — черновик. */
+  confirmed: boolean;
+  /** Своя картинка, приоритетнее source.imagePath. */
+  imagePath: string | null;
+  overrides: ToolOverrides;
+  addedAt: string;
+  updatedAt: string;
+}
+
+export interface Tool {
+  id: string;
+  url: string;
+  /** Ключ дедупликации из normalizeToolUrl. */
+  key: string;
+  domain: string;
+  source: ToolSource;
+  analysis: ToolAnalysis;
+  user: ToolUser;
+}
+
+export type ToolSummary = Omit<Tool, 'source'> & { source: Omit<ToolSource, 'text'> };
+
+/** Частичное обновление user; в overrides null снимает правку поля. */
+export type ToolPatch = Partial<Omit<ToolUser, 'overrides' | 'imagePath' | 'addedAt' | 'updatedAt'>> & {
+  overrides?: { [K in keyof ToolOverrides]?: ToolOverrides[K] | null };
+};
+
+export type ToolSortKey = 'added' | 'updated' | 'name';
+
+export interface ToolQuery {
+  q?: string;
+  categories?: string[];
+  tags?: string[];
+  favorite?: boolean;
+  /** Только неподтверждённые. */
+  drafts?: boolean;
+  /** Только без готового AI-анализа. */
+  noAnalysis?: boolean;
+  sort?: ToolSortKey;
+}
+
+export interface ToolFacets {
+  categories: Array<{ value: string; count: number }>;
+  tags: Array<{ value: string; count: number }>;
+  favorites: number;
+  drafts: number;
+  noAnalysis: number;
+  total: number;
+}
+
+/** Стартовый список категорий; пользователь может вводить свои. */
+export const TOOL_CATEGORIES = [
+  'Дизайн',
+  '3D и графика',
+  'Frontend',
+  'Backend',
+  'AI и ML',
+  'Аналитика и данные',
+  'Продуктивность',
+  'DevOps и инфраструктура',
+  'Другое',
+] as const;
+
+export interface ToolRecommendation {
+  /** search — без LLM или при её сбое. */
+  mode: 'ai' | 'search';
+  items: Array<{ tool: ToolSummary; reason: string | null; fit: 'high' | 'medium' | null }>;
+  /** Общий комментарий модели. */
+  comment: string | null;
+  notice: string | null;
+}
+
 export const EXPORT_FORMAT = 'gitlib-library';
-export const EXPORT_VERSION = 1;
+export const EXPORT_VERSION = 2;
 
 export type ExportedRepo = Repo & { avatarDataUrl?: string | null };
+
+/** Картинки инструмента — data URL; пути из файла как пути не используются. */
+export type ExportedTool = Tool & {
+  iconDataUrl?: string | null;
+  coverDataUrl?: string | null;
+  userImageDataUrl?: string | null;
+};
 
 export interface ExportFile {
   format: typeof EXPORT_FORMAT;
@@ -195,6 +343,8 @@ export interface ExportFile {
   app: string;
   repos: ExportedRepo[];
   collections: Collection[];
+  /** В файле версии 1 отсутствует — читается как []. */
+  tools: ExportedTool[];
 }
 
 export type DuplicateStrategy = 'skip' | 'merge' | 'replace';
@@ -204,6 +354,7 @@ export interface ImportPreview {
   exportedAt: string;
   repos: { total: number; new: number; duplicates: number; duplicateNames: string[] };
   collections: { total: number; new: number; existing: number };
+  tools: { total: number; new: number; duplicates: number; duplicateNames: string[] };
 }
 
 export interface ImportResult {
@@ -213,6 +364,8 @@ export interface ImportResult {
   skipped: number;
   collectionsCreated: number;
   collectionsUpdated: number;
+  /** Инструменты считаются отдельно от репозиториев. */
+  tools: { added: number; merged: number; replaced: number; skipped: number };
 }
 
 export interface ApiError {

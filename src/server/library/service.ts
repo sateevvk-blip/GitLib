@@ -9,6 +9,7 @@ import { analyzeRepo, chatAboutRepo, selectChatFiles } from '../ai/analyzer.js';
 import { rankFiles, readableEntries, type ChatContext } from '../ai/context.js';
 import { RepoContents, githubContentSource, type ContentSource } from './contents.js';
 import { config } from '../config.js';
+import { JobQueue } from './queue.js';
 import { DuplicateError, NotFoundError, ValidationError } from '../errors.js';
 
 export interface ServiceDeps {
@@ -19,6 +20,8 @@ export interface ServiceDeps {
   ai?: { analyzeRepo: typeof analyzeRepo; chatAboutRepo?: typeof chatAboutRepo; selectChatFiles?: typeof selectChatFiles };
   /** Источник структуры и файлов репозитория для чата; подменяется в тестах. */
   contents?: ContentSource;
+  /** Общая очередь фоновых задач; без неё сервис создаёт свою. */
+  queue?: JobQueue;
   log?: { info: (msg: string) => void; warn: (msg: string) => void; error: (msg: string) => void };
 }
 
@@ -33,12 +36,11 @@ export class LibraryService {
   private readonly ai: { analyzeRepo: typeof analyzeRepo; chatAboutRepo: typeof chatAboutRepo; selectChatFiles: typeof selectChatFiles };
   private readonly contents: RepoContents;
   private readonly log: NonNullable<ServiceDeps['log']>;
-  private readonly queue: string[] = [];
-  private readonly queued = new Set<string>();
-  private running = false;
+  private readonly queue: JobQueue;
 
   constructor(deps: ServiceDeps) {
     this.store = deps.store;
+    this.queue = deps.queue ?? new JobQueue();
     this.settings = deps.settings;
     this.github = deps.github ?? { fetchRepository, downloadAvatar };
     this.ai = {
@@ -94,6 +96,9 @@ export class LibraryService {
       }
     }
     const avatarPath = await this.github.downloadAvatar(fetched.github.ownerAvatarUrl, fetched.github.ownerLogin);
+    // Пока шли запросы к GitHub, тот же репозиторий могли добавить ещё раз (двойной клик).
+    const added = this.store.getByKey(canonicalKey) ?? this.store.getByKey(ref.key);
+    if (added) throw new DuplicateError(`«${added.fullName}» уже есть в библиотеке`, added.id);
     const now = new Date().toISOString();
     const llmConfigured = this.settings.isLlmConfigured();
     const repo: Repo = {
@@ -125,7 +130,8 @@ export class LibraryService {
       }
     }
     const avatarPath = await this.github.downloadAvatar(fetched.github.ownerAvatarUrl, fetched.github.ownerLogin);
-    const updated = applyGithubRefresh(repo, fetched.github, avatarPath, fetched.canonical);
+    // Перечитать после ожидания сети: иначе затрутся заметки и анализ, изменённые за это время.
+    const updated = applyGithubRefresh(this.get(id), fetched.github, avatarPath, fetched.canonical);
     this.store.update(updated);
     this.log.info(`Обновлён ${updated.fullName}`);
     return updated;
@@ -149,15 +155,15 @@ export class LibraryService {
 
   // ---------- AI ----------
 
-  /** Ставит анализ в очередь; возвращает запись со статусом pending. */
-  requestAnalysis(id: string): Repo {
+  /** Ставит анализ в очередь; возвращает запись со статусом pending. `enqueue = false` — вызывающий запустит анализ сам. */
+  requestAnalysis(id: string, enqueue = true): Repo {
     const repo = this.get(id);
     if (!this.settings.isLlmConfigured()) {
       throw new ValidationError('LLM не настроена. Укажите Base URL и модель в настройках.');
     }
     const pending: AnalysisData = { ...repo.analysis, status: 'pending', error: null };
     this.store.updateAnalysis(id, pending);
-    this.enqueueAnalysis(id);
+    if (enqueue) this.enqueueAnalysis(id);
     return { ...repo, analysis: pending };
   }
 
@@ -237,29 +243,19 @@ export class LibraryService {
   }
 
   pendingCount(): number {
-    return this.queue.length + (this.running ? 1 : 0);
+    return this.queue.size();
   }
 
   private enqueueAnalysis(id: string): void {
-    if (this.queued.has(id)) return;
-    this.queued.add(id);
-    this.queue.push(id);
-    void this.drain();
-  }
-
-  private async drain(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
-    try {
-      while (this.queue.length > 0) {
-        const id = this.queue.shift()!;
-        this.queued.delete(id);
-        if (!this.store.getById(id)) continue;
+    this.queue.enqueue(`repo:${id}`, async () => {
+      if (!this.store.getById(id)) return;
+      try {
         await this.runAnalysis(id);
+      } catch (e) {
+        // Запись удалили, пока шёл анализ.
+        this.log.warn(`AI-анализ пропущен (${id}): ${e instanceof Error ? e.message : String(e)}`);
       }
-    } finally {
-      this.running = false;
-    }
+    });
   }
 
   // ---------- коллекции ----------

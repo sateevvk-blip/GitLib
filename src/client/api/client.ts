@@ -12,6 +12,12 @@ import type {
   Repo,
   RepoSummary,
   SettingsPatch,
+  Tool,
+  ToolFacets,
+  ToolPatch,
+  ToolQuery,
+  ToolRecommendation,
+  ToolSummary,
   UserPatch,
 } from '../../shared/types.js';
 
@@ -70,6 +76,25 @@ export function queryToParams(q: LibraryQuery): URLSearchParams {
   return p;
 }
 
+export function toolQueryToParams(q: ToolQuery): URLSearchParams {
+  const p = new URLSearchParams();
+  if (q.q) p.set('q', q.q);
+  for (const c of q.categories ?? []) p.append('categories', c);
+  for (const t of q.tags ?? []) p.append('tags', t);
+  if (q.favorite) p.set('favorite', '1');
+  if (q.drafts) p.set('drafts', '1');
+  if (q.noAnalysis) p.set('noAnalysis', '1');
+  if (q.sort && q.sort !== 'added') p.set('sort', q.sort);
+  return p;
+}
+
+export interface ManualTool {
+  title: string;
+  description?: string;
+  category?: string;
+  tags?: string[];
+}
+
 export const api = {
   health: () => request<{ ok: boolean; version: string; dataDir: string; repos: number; pendingAnalyses: number }>('/api/health'),
   connectivity: () => request<ConnectivityStatus>('/api/status/connectivity'),
@@ -85,6 +110,22 @@ export const api = {
   analyzeRepo: (id: string) => request<Repo>(`/api/repos/${encodeURIComponent(id)}/analyze`, { method: 'POST' }),
   chatRepo: (id: string, messages: ChatMessage[]) =>
     request<ChatReply>(`/api/repos/${encodeURIComponent(id)}/chat`, { method: 'POST', body: JSON.stringify({ messages }) }),
+
+  chatTool: (id: string, messages: ChatMessage[]) =>
+    request<ChatReply>(`/api/tools/${encodeURIComponent(id)}/chat`, { method: 'POST', body: JSON.stringify({ messages }) }),
+  recommendTools: (task: string) => request<ToolRecommendation>('/api/tools/recommend', { method: 'POST', body: JSON.stringify({ task }) }),
+
+  listTools: (q: ToolQuery) => request<{ items: ToolSummary[]; total: number }>(`/api/tools?${toolQueryToParams(q)}`),
+  toolFacets: () => request<ToolFacets>('/api/tools/facets'),
+  addTool: (url: string, manual?: ManualTool) => request<Tool>('/api/tools', { method: 'POST', body: JSON.stringify(manual ? { url, manual } : { url }) }),
+  patchTool: (id: string, patch: ToolPatch) =>
+    request<Tool>(`/api/tools/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  getTool: (id: string) => request<Tool>(`/api/tools/${encodeURIComponent(id)}`),
+  deleteTool: (id: string) => request<void>(`/api/tools/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  refreshTool: (id: string) => request<Tool>(`/api/tools/${encodeURIComponent(id)}/refresh`, { method: 'POST' }),
+  analyzeTool: (id: string) => request<Tool>(`/api/tools/${encodeURIComponent(id)}/analyze`, { method: 'POST' }),
+  setToolImage: (id: string, imageUrl: string | null) =>
+    request<Tool>(`/api/tools/${encodeURIComponent(id)}/image`, { method: 'PUT', body: JSON.stringify({ imageUrl }) }),
 
   listCollections: () => request<Collection[]>('/api/collections'),
   createCollection: (name: string, description = '') =>

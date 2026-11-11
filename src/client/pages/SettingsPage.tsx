@@ -110,9 +110,10 @@ export function SettingsPage() {
           </p>
           <form onSubmit={saveGithub}>
             <div className="field">
-              <span className="label">Personal access token</span>
+              <label className="label" htmlFor="set-gh-token">Personal access token</label>
               <div className="secret-row">
                 <input
+                  id="set-gh-token"
                   className="input"
                   type="password"
                   autoComplete="off"
@@ -149,22 +150,23 @@ export function SettingsPage() {
           <form onSubmit={saveLlm}>
             <div className="form-grid">
               <div className="field field-wide">
-                <span className="label">Base URL</span>
-                <input className="input mono" placeholder="https://api.openai.com/v1" value={llmBaseUrl} onChange={(e) => setLlmBaseUrl(e.target.value)} />
+                <label className="label" htmlFor="set-llm-url">Base URL</label>
+                <input id="set-llm-url" className="input mono" placeholder="https://api.openai.com/v1" value={llmBaseUrl} onChange={(e) => setLlmBaseUrl(e.target.value)} />
                 <span className="field-hint">Запросы идут на {'{Base URL}'}/chat/completions</span>
               </div>
               <div className="field">
-                <span className="label">Модель</span>
-                <input className="input mono" placeholder="gpt-4o-mini, qwen2.5:7b…" value={llmModel} onChange={(e) => setLlmModel(e.target.value)} />
+                <label className="label" htmlFor="set-llm-model">Модель</label>
+                <input id="set-llm-model" className="input mono" placeholder="gpt-4o-mini, qwen2.5:7b…" value={llmModel} onChange={(e) => setLlmModel(e.target.value)} />
               </div>
               <div className="field">
-                <span className="label">Таймаут, секунд</span>
-                <input className="input mono" type="number" min={5} max={900} value={llmTimeoutSec} onChange={(e) => setLlmTimeoutSec(e.target.value)} />
+                <label className="label" htmlFor="set-llm-timeout">Таймаут, секунд</label>
+                <input id="set-llm-timeout" className="input mono" type="number" min={5} max={900} value={llmTimeoutSec} onChange={(e) => setLlmTimeoutSec(e.target.value)} />
               </div>
               <div className="field field-wide">
-                <span className="label">API-ключ (необязательно)</span>
+                <label className="label" htmlFor="set-llm-key">API-ключ (необязательно)</label>
                 <div className="secret-row">
                   <input
+                    id="set-llm-key"
                     className="input"
                     type="password"
                     autoComplete="off"
@@ -267,7 +269,10 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
         onSuccess: (r) => {
           toast(
             'success',
-            `Импорт завершён: добавлено ${r.added}, объединено ${r.merged}, заменено ${r.replaced}, пропущено ${r.skipped}; коллекций создано ${r.collectionsCreated}, обновлено ${r.collectionsUpdated}`,
+            `Импорт завершён: добавлено ${r.added}, объединено ${r.merged}, заменено ${r.replaced}, пропущено ${r.skipped}; коллекций создано ${r.collectionsCreated}, обновлено ${r.collectionsUpdated}` +
+              (r.tools.added + r.tools.merged + r.tools.replaced + r.tools.skipped > 0
+                ? `. Инструменты: добавлено ${r.tools.added}, объединено ${r.tools.merged}, заменено ${r.tools.replaced}, пропущено ${r.tools.skipped}`
+                : ''),
             undefined,
             9000,
           );
@@ -302,7 +307,7 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
         {reading && <span className="spinner" />}
       </div>
       <p className="field-hint" style={{ marginTop: 10 }}>
-        Экспорт включает все записи с README, аватары, заметки, темы, статусы, избранное и коллекции. Токены и ключи в экспорт не попадают.
+        Экспорт включает репозитории (README, аватары, заметки, темы, статусы, избранное), коллекции и каталог инструментов с картинками. Токены и ключи в экспорт не попадают.
       </p>
 
       {previewError && (
@@ -332,18 +337,39 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
               {preview.collections.existing > 0 && ` (${preview.collections.existing} совпад. по названию)`}
             </span>
           </div>
-          {preview.repos.duplicates > 0 && (
+          {preview.tools.total > 0 && (
+            <div className="row">
+              <span>
+                <b>{preview.tools.total}</b> {plural(preview.tools.total, ['инструмент', 'инструмента', 'инструментов'], false)}
+              </span>
+              <span>
+                <b>{preview.tools.new}</b> новых
+              </span>
+              <span>
+                <b>{preview.tools.duplicates}</b> уже есть
+              </span>
+            </div>
+          )}
+          {preview.repos.duplicates + preview.tools.duplicates > 0 && (
             <>
-              <div className="muted" style={{ fontSize: 13 }}>
-                Совпадения: {preview.repos.duplicateNames.slice(0, 8).join(', ')}
-                {preview.repos.duplicateNames.length > 8 && ` и ещё ${preview.repos.duplicateNames.length - 8}`}
-              </div>
+              {preview.repos.duplicates > 0 && (
+                <div className="muted" style={{ fontSize: 13 }}>
+                  Совпадения: {preview.repos.duplicateNames.slice(0, 8).join(', ')}
+                  {preview.repos.duplicateNames.length > 8 && ` и ещё ${preview.repos.duplicateNames.length - 8}`}
+                </div>
+              )}
+              {preview.tools.duplicates > 0 && (
+                <div className="muted" style={{ fontSize: 13 }}>
+                  Совпадения среди инструментов: {preview.tools.duplicateNames.slice(0, 8).join(', ')}
+                  {preview.tools.duplicateNames.length > 8 && ` и ещё ${preview.tools.duplicateNames.length - 8}`}
+                </div>
+              )}
               <div className="radio-list" role="radiogroup" aria-label="Что делать с дубликатами">
                 <label>
                   <input type="radio" name="strategy" checked={strategy === 'merge'} onChange={() => setStrategy('merge')} />
                   <span>
                     Объединить
-                    <small>Заметки склеиваются, темы объединяются, избранное и статус не понижаются. Данные GitHub и AI — более свежие из двух.</small>
+                    <small>Заметки склеиваются, темы объединяются, избранное и статус не понижаются. Данные GitHub и AI — более свежие из двух. У инструментов локальные правки сводки сохраняются, теги объединяются, избранное и подтверждение остаются, если отмечены хотя бы с одной стороны.</small>
                   </span>
                 </label>
                 <label>

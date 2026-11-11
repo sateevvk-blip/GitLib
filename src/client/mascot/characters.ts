@@ -10,6 +10,8 @@ export const LEGACY_CHARACTER_IDS: Record<string, CharacterId> = { bear: 'lemon'
 export interface Character {
   id: CharacterId;
   name: string;
+  /** Винительный падеж одушевлённого: «спросить Лимона». */
+  nameAcc: string;
   /** Короткая характеристика для карточки выбора. */
   tagline: string;
   voice: {
@@ -110,6 +112,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   banana: {
     id: 'banana',
     name: 'Банан',
+    nameAcc: 'Банана',
     tagline: 'Невозмутимый. Никуда не спешит, но всё успевает.',
     voice: {
       greeting: ['Банан на связи. Спокойно, всё разложим по полкам.', 'Привет. Я Банан — не спешу, но всё успеваю.'],
@@ -122,6 +125,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   baller: {
     id: 'baller',
     name: 'Баскет',
+    nameAcc: 'Баскета',
     tagline: 'С мячом под мышкой, пока ты читаешь README.',
     voice: {
       greeting: ['Баскет в игре! Кидай ссылки — ловлю.', 'Привет! Мяч при мне, библиотека растёт.'],
@@ -134,6 +138,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   globe: {
     id: 'globe',
     name: 'Глобус',
+    nameAcc: 'Глобуса',
     tagline: 'Знает все репозитории мира. Ну почти.',
     voice: {
       greeting: ['Глобус. Покажу, где что лежит.', 'Привет. Все репозитории мира — на одной полке.'],
@@ -146,6 +151,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   cat: {
     id: 'cat',
     name: 'Кот',
+    nameAcc: 'Кота',
     tagline: 'Синий, ушастый, усатый. Всё слышит и всё видит.',
     voice: {
       greeting: ['Кот на месте. Мяу.', 'Йо. Усатый на посту.'],
@@ -158,6 +164,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   fish: {
     id: 'fish',
     name: 'Карась',
+    nameAcc: 'Карася',
     tagline: 'Серьёзный. Плавает по базе как по пруду.',
     voice: {
       greeting: ['Карась. Плаваю здесь. Вопросы?', 'Здесь я главный по базе. Поплыли.'],
@@ -170,6 +177,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   lemon: {
     id: 'lemon',
     name: 'Лимон',
+    nameAcc: 'Лимона',
     tagline: 'В кепке и с хитрой улыбкой. Кислый только с виду.',
     voice: {
       greeting: ['Лимон на месте. Устраивайся.', 'Привет! Кепку поправил — можно работать.'],

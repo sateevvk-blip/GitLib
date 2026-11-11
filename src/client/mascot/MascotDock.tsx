@@ -4,7 +4,7 @@ import { Mascot } from './Mascot';
 import { peek, phrases, pick, react, setAmbient, timeGreeting, useMascot } from './store';
 import { CHARACTERS } from './characters';
 import { hasChosenCharacter, useCharacter } from './choice';
-import { toggleChat, useChat } from './chat';
+import { chatKey, chatLabel, toggleChat, useChat } from './chat';
 import { RepoChat } from './RepoChat';
 import { useOnline } from '../lib/online';
 import { usePresence } from '../lib/motion';
@@ -120,11 +120,11 @@ export function MascotDock() {
     }
   };
 
-  const title = chat.target ? (chatOpen ? 'Закрыть чат' : `Спросить ${character.name} про ${chat.target.fullName}`) : `${character.name} — твой напарник`;
+  const title = chat.target ? (chatOpen ? 'Закрыть чат' : `Спросить ${character.nameAcc} про «${chatLabel(chat.target)}»`) : `${character.name} — твой напарник`;
 
   return (
     <div className="mascot-dock">
-      {chatOpen && chat.target && <RepoChat key={chat.target.id} target={chat.target} />}
+      {chatOpen && chat.target && <RepoChat key={chatKey(chat.target)} target={chat.target} />}
       {bubble?.message && !chatOpen && (
         <div className={`mascot-bubble${leaving ? ' is-leaving' : ''}`} key={bubble.message} aria-live="polite">
           <span>{bubble.message}</span>

@@ -23,25 +23,28 @@ export function TopBar() {
   const navigate = useNavigate();
   const location = useLocation();
   const inputRef = useRef<HTMLInputElement>(null);
-  const onLibrary = location.pathname === '/';
+  const onTools = location.pathname.startsWith('/tools');
+  // Поиск шапки работает по текущему разделу; на других страницах отправляет в каталог раздела.
+  const home = onTools ? '/tools' : '/';
+  const onLibrary = location.pathname === home;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const typing = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
-      if (e.key === '/' && !typing) {
+      if (e.key === '/' && !typing && !document.querySelector('[aria-modal="true"]')) {
         e.preventDefault();
-        if (!onLibrary) navigate('/');
+        if (!onLibrary) navigate(home);
         inputRef.current?.focus();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onLibrary, navigate]);
+  }, [onLibrary, home, navigate]);
 
   const setQ = (q: string) => {
     if (!onLibrary) {
-      navigate(`/?q=${encodeURIComponent(q)}`);
+      navigate(`${home}?q=${encodeURIComponent(q)}`);
       return;
     }
     update({ q });
@@ -69,6 +72,7 @@ export function TopBar() {
           <NavLink to="/" end>
             Библиотека
           </NavLink>
+          <NavLink to="/tools">Инструменты</NavLink>
           <NavLink to="/collections">Коллекции</NavLink>
           <NavLink to="/settings">Настройки</NavLink>
         </nav>
@@ -76,12 +80,12 @@ export function TopBar() {
 
       <div className="topbar-search">
         <label className="search">
-          <span className="visually-hidden">Поиск по библиотеке</span>
+          <span className="visually-hidden">{onTools ? 'Поиск по инструментам' : 'Поиск по библиотеке'}</span>
           <Search size={17} />
           <input
             ref={inputRef}
             type="search"
-            placeholder="Найти проект: название, тема, слово из сводки или заметки…"
+            placeholder={onTools ? 'Найти инструмент: название, тег, слово из описания…' : 'Найти проект: название, тема, слово из сводки или заметки…'}
             value={onLibrary ? query.q ?? '' : ''}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => {

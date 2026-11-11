@@ -60,6 +60,8 @@ try {
   const html = await index.text();
   check('клиент отдаётся', index.ok && html.includes('<div id="root">'));
 
+  check('CSP страницы', (index.headers.get('content-security-policy') ?? '').includes("connect-src 'self'"));
+
   const spa = await fetch(`${base}/repo/does-not-exist`);
   check('SPA fallback', spa.ok && (await spa.text()).includes('<div id="root">'));
 
@@ -75,8 +77,24 @@ try {
   const col = await fetch(`${base}/api/collections`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Smoke' }) });
   check('создание коллекции', col.status === 201);
 
+  const tools = await (await fetch(`${base}/api/tools`)).json();
+  check('инструменты: список пуст', tools.total === 0 && tools.items.length === 0 && health.tools === 0);
+
+  // Настоящий загрузчик без сети: внутренний адрес отклоняется до соединения.
+  const forbidden = await fetch(`${base}/api/tools`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: 'http://127.0.0.1:1/' }) });
+  const forbiddenBody = await forbidden.json();
+  check('инструменты: внутренний адрес → 422 url_forbidden', forbidden.status === 422 && forbiddenBody.code === 'url_forbidden', forbiddenBody.code);
+
+  const manual = await fetch(`${base}/api/tools`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: 'https://example.com/smoke', manual: { title: 'Smoke tool' } }),
+  });
+  check('инструменты: ручное создание → 201', manual.status === 201);
+
   const exp = await (await fetch(`${base}/api/export`)).json();
   check('экспорт', exp.format === 'gitlib-library' && exp.collections.length === 1);
+  check('экспорт содержит tools', exp.version === 2 && Array.isArray(exp.tools) && exp.tools.length === 1, String(exp.tools?.length));
 
   const unknown = await fetch(`${base}/api/nope`);
   check('404 для неизвестного API', unknown.status === 404);

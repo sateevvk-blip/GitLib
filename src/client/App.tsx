@@ -5,6 +5,8 @@ import { MascotDock } from './mascot/MascotDock';
 import { Intro } from './intro/Intro';
 import { LibraryPage } from './pages/LibraryPage';
 import { RepoPage } from './pages/RepoPage';
+import { ToolPage } from './pages/ToolPage';
+import { ToolsPage } from './pages/ToolsPage';
 import { CollectionsPage } from './pages/CollectionsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { EmptyState } from './components/EmptyState';
@@ -17,6 +19,8 @@ export function App() {
       <Routes>
         <Route path="/" element={<LibraryPage />} />
         <Route path="/repo/:id" element={<RepoPage />} />
+        <Route path="/tools" element={<ToolsPage />} />
+        <Route path="/tools/:id" element={<ToolPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route
