@@ -665,6 +665,7 @@ h3 {
   transition: border-color var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out), color var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
 .chip span {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1019,6 +1020,7 @@ h3 {
   align-items: center;
 }
 .lib-tools {
+  flex-wrap: wrap;
   display: flex;
   gap: 10px;
   align-items: center;
@@ -1325,6 +1327,203 @@ h3 {
   color: var(--cobalt-ink);
   border-color: var(--cobalt);
   border-style: dashed;
+}
+
+/* ---------- tools: каталог инструментов ---------- */
+
+.tool-grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.tool-grid .skeleton {
+  min-height: 300px;
+}
+/* Превью заходит на поля карточки, как оттиск на листе */
+.tool-thumb {
+  aspect-ratio: 16 / 7;
+  margin: -18px -18px 0;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--paper-3);
+}
+.tool-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tool-thumb-fallback {
+  display: grid;
+  place-items: center;
+  background-image: linear-gradient(var(--grid-strong) 1px, transparent 1px), linear-gradient(90deg, var(--grid-strong) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.tool-thumb-fallback span {
+  padding: 2px 14px;
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cobalt-ink);
+  background: var(--paper-2);
+  border: 1px solid var(--cobalt-line);
+  box-shadow: 2px 2px 0 var(--cobalt-line);
+}
+.tool-card .card-index {
+  top: 8px;
+  right: 8px;
+  padding: 1px 5px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+}
+.tool-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  line-height: 1.3;
+  background-image: none;
+}
+.tool-domain {
+  margin-top: 2px;
+}
+.tool-desc {
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+.tool-category {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.tool-card .card-badges {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.tag-draft {
+  color: var(--cobalt-ink);
+  border-color: var(--cobalt);
+  background: var(--cobalt-soft);
+}
+
+/* Добавление инструмента */
+.confirm.add-tool-overlay {
+  --add-tool-top: min(12vh, 96px);
+  align-items: flex-start;
+  padding-top: var(--add-tool-top);
+}
+.add-tool-box {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100dvh - var(--add-tool-top) - 16px);
+  overflow-y: auto;
+}
+.add-tool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.add-tool-head h3 {
+  margin: 0;
+}
+.add-tool-head + p {
+  margin-bottom: 16px;
+}
+.add-tool .add-form {
+  margin-bottom: 12px;
+}
+.add-tool .add-form .input {
+  min-width: 0;
+}
+.add-tool-hint,
+.add-tool-error,
+.add-tool-note {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  border-radius: var(--radius);
+  animation: fade-up var(--dur-base) var(--ease-out) backwards;
+}
+.add-tool-hint {
+  border: 1px dashed var(--cobalt);
+  background: var(--cobalt-soft);
+  color: var(--cobalt-ink);
+}
+.add-tool-error {
+  border: 1px solid var(--danger);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.add-tool-note {
+  padding: 0;
+  color: var(--ink-3);
+}
+.add-tool-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: var(--cobalt-ink);
+  cursor: pointer;
+}
+.add-tool-toggle:hover {
+  text-decoration: underline;
+}
+.add-tool-toggle:focus-visible {
+  outline: 2px dashed var(--cobalt);
+  outline-offset: 2px;
+}
+.add-tool-toggle svg {
+  transition: transform var(--dur-quick) var(--ease-out);
+}
+.add-tool-manual {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--line-strong);
+  animation: fade-up var(--dur-base) var(--ease-out) backwards;
+}
+.add-tool-text {
+  min-height: 72px;
+  resize: vertical;
+}
+.add-tool-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 560px) {
+  .add-tool-pair {
+    grid-template-columns: 1fr;
+  }
+  .add-tool .add-form {
+    flex-direction: column;
+  }
+  .add-tool .add-form .input,
+  .add-tool-manual .input {
+    font-size: 16px; /* меньше 16px — iOS приближает страницу при фокусе */
+  }
 }
 
 .is-list .card {
@@ -3318,6 +3517,31 @@ h3 {
   }
 }
 
+/* Четыре раздела + поиск не помещаются в одну строку уже на ~1100 px: поиск уходит второй строкой */
+@media (max-width: 1100px) {
+  .topbar {
+    grid-template-columns: auto 1fr;
+    gap: 12px;
+    height: auto;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .topbar-left {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .topbar-right {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .topbar-search {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    max-width: none;
+  }
+}
+
 @media (max-width: 900px) {
   .topbar {
     grid-template-columns: auto 1fr;
@@ -3365,7 +3589,7 @@ h3 {
     animation: none;
   }
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     padding: 18px 16px 160px;
     gap: 6px;
   }
@@ -3425,6 +3649,60 @@ h3 {
   }
 }
 
+/* Четыре раздела не помещаются рядом с логотипом: навигация — отдельной строкой сетки на всю ширину */
+@media (max-width: 560px) {
+  .topbar-left {
+    display: contents;
+  }
+  .wordmark {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .topnav {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-left: 0;
+    min-width: 0;
+    justify-content: space-between;
+    overflow-x: auto; /* если не влезло, прокрутка вместо наезда */
+    scrollbar-width: none;
+  }
+  .topnav a {
+    align-items: center;
+    min-height: 44px;
+  }
+  .topnav a:focus-visible {
+    outline-offset: -2px;
+  }
+  .topbar-search {
+    grid-row: 3;
+  }
+  .lib-tools {
+    width: 100%;
+  }
+  .lib-tools .btn-primary {
+    flex: 1;
+    justify-content: center;
+  }
+  .confirm.add-tool-overlay {
+    --add-tool-top: 16px;
+  }
+  .empty-hero {
+    margin-bottom: 120px; /* место под маскота, чтобы он не закрывал поле адреса */
+  }
+}
+@media (max-width: 360px) {
+  .topnav a {
+    padding-inline: 2px;
+    letter-spacing: 0;
+    gap: 4px;
+  }
+  .topnav a::after {
+    left: 2px;
+    right: 2px;
+  }
+}
+
 /* ---------- меньше движения ----------
    Последним в файле, чтобы перекрыть правила выше. Появления — только прозрачность, без сдвига;
    фоновые петли стоят; наведение и нажатие не двигают элементы. Спиннер крутится медленнее:
@@ -3441,7 +3719,10 @@ h3 {
   .chat-bubble,
   .mascot-badge,
   .confirm,
-  .confirm-box {
+  .confirm-box,
+  .add-tool-hint,
+  .add-tool-error,
+  .add-tool-manual {
     animation-name: fade-in;
     animation-duration: var(--dur-quick);
     animation-timing-function: linear;
@@ -3467,6 +3748,9 @@ h3 {
   }
   .spinner {
     animation-duration: 2s;
+  }
+  .add-tool-toggle svg {
+    transition: none;
   }
   .wordmark:hover .wordmark-cube,
   .btn:hover,

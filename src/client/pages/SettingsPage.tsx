@@ -267,7 +267,10 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
         onSuccess: (r) => {
           toast(
             'success',
-            `Импорт завершён: добавлено ${r.added}, объединено ${r.merged}, заменено ${r.replaced}, пропущено ${r.skipped}; коллекций создано ${r.collectionsCreated}, обновлено ${r.collectionsUpdated}`,
+            `Импорт завершён: добавлено ${r.added}, объединено ${r.merged}, заменено ${r.replaced}, пропущено ${r.skipped}; коллекций создано ${r.collectionsCreated}, обновлено ${r.collectionsUpdated}` +
+              (r.tools.added + r.tools.merged + r.tools.replaced + r.tools.skipped > 0
+                ? `. Инструменты: добавлено ${r.tools.added}, объединено ${r.tools.merged}, заменено ${r.tools.replaced}, пропущено ${r.tools.skipped}`
+                : ''),
             undefined,
             9000,
           );
@@ -302,7 +305,7 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
         {reading && <span className="spinner" />}
       </div>
       <p className="field-hint" style={{ marginTop: 10 }}>
-        Экспорт включает все записи с README, аватары, заметки, темы, статусы, избранное и коллекции. Токены и ключи в экспорт не попадают.
+        Экспорт включает репозитории (README, аватары, заметки, темы, статусы, избранное), коллекции и каталог инструментов с картинками. Токены и ключи в экспорт не попадают.
       </p>
 
       {previewError && (
@@ -332,12 +335,33 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
               {preview.collections.existing > 0 && ` (${preview.collections.existing} совпад. по названию)`}
             </span>
           </div>
-          {preview.repos.duplicates > 0 && (
+          {preview.tools.total > 0 && (
+            <div className="row">
+              <span>
+                <b>{preview.tools.total}</b> {plural(preview.tools.total, ['инструмент', 'инструмента', 'инструментов'], false)}
+              </span>
+              <span>
+                <b>{preview.tools.new}</b> новых
+              </span>
+              <span>
+                <b>{preview.tools.duplicates}</b> уже есть
+              </span>
+            </div>
+          )}
+          {preview.repos.duplicates + preview.tools.duplicates > 0 && (
             <>
-              <div className="muted" style={{ fontSize: 13 }}>
-                Совпадения: {preview.repos.duplicateNames.slice(0, 8).join(', ')}
-                {preview.repos.duplicateNames.length > 8 && ` и ещё ${preview.repos.duplicateNames.length - 8}`}
-              </div>
+              {preview.repos.duplicates > 0 && (
+                <div className="muted" style={{ fontSize: 13 }}>
+                  Совпадения: {preview.repos.duplicateNames.slice(0, 8).join(', ')}
+                  {preview.repos.duplicateNames.length > 8 && ` и ещё ${preview.repos.duplicateNames.length - 8}`}
+                </div>
+              )}
+              {preview.tools.duplicates > 0 && (
+                <div className="muted" style={{ fontSize: 13 }}>
+                  Совпадения среди инструментов: {preview.tools.duplicateNames.slice(0, 8).join(', ')}
+                  {preview.tools.duplicateNames.length > 8 && ` и ещё ${preview.tools.duplicateNames.length - 8}`}
+                </div>
+              )}
               <div className="radio-list" role="radiogroup" aria-label="Что делать с дубликатами">
                 <label>
                   <input type="radio" name="strategy" checked={strategy === 'merge'} onChange={() => setStrategy('merge')} />

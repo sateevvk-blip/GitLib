@@ -1,11 +1,14 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, UserPatch } from '../../shared/types.js';
-import { api, queryToParams } from './client';
+import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, ToolPatch, ToolQuery, ToolSummary, UserPatch } from '../../shared/types.js';
+import { api, queryToParams, toolQueryToParams, type ManualTool } from './client';
 
 export const keys = {
   repos: (q: LibraryQuery) => ['repos', queryToParams(q).toString()] as const,
   repo: (id: string) => ['repo', id] as const,
   facets: ['facets'] as const,
+  tools: (q: ToolQuery) => ['tools', toolQueryToParams(q).toString()] as const,
+  toolFacets: ['tool-facets'] as const,
   collections: ['collections'] as const,
   settings: ['settings'] as const,
   health: ['health'] as const,
@@ -17,6 +20,65 @@ export function useRepos(q: LibraryQuery) {
 
 export function useFacets() {
   return useQuery({ queryKey: keys.facets, queryFn: api.facets });
+}
+
+export function useTools(q: ToolQuery) {
+  const qc = useQueryClient();
+  const result = useQuery({
+    queryKey: keys.tools(q),
+    queryFn: () => api.listTools(q),
+    placeholderData: (prev) => prev,
+    // Пока хоть одна карточка анализируется — список обновляется сам.
+    refetchInterval: (query) => (query.state.data?.items.some((t) => t.analysis.status === 'pending') ? 3000 : false),
+  });
+  // Когда анализ закончился, счётчики «Без AI-анализа» в фасетах устарели.
+  const pending = result.data?.items.filter((t) => t.analysis.status === 'pending').length ?? 0;
+  const prev = useRef(pending);
+  useEffect(() => {
+    if (pending < prev.current) void qc.invalidateQueries({ queryKey: keys.toolFacets });
+    prev.current = pending;
+  }, [pending, qc]);
+  return result;
+}
+
+export function useToolFacets() {
+  return useQuery({ queryKey: keys.toolFacets, queryFn: api.toolFacets });
+}
+
+function useInvalidateTools() {
+  const qc = useQueryClient();
+  return () => {
+    void qc.invalidateQueries({ queryKey: ['tools'] });
+    void qc.invalidateQueries({ queryKey: keys.toolFacets });
+    void qc.invalidateQueries({ queryKey: keys.health });
+  };
+}
+
+export function useAddTool() {
+  const invalidate = useInvalidateTools();
+  return useMutation({
+    mutationFn: ({ url, manual }: { url: string; manual?: ManualTool }) => api.addTool(url, manual),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePatchTool() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateTools();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: ToolPatch }) => api.patchTool(id, patch),
+    // Звезда меняется сразу, не дожидаясь ответа; при ошибке возвращаем прежний список.
+    onMutate: async ({ id, patch }) => {
+      await qc.cancelQueries({ queryKey: ['tools'] });
+      const prev = qc.getQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] });
+      qc.setQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] }, (d) =>
+        d && { ...d, items: d.items.map((t) => (t.id === id && patch.favorite !== undefined ? { ...t, user: { ...t.user, favorite: patch.favorite } } : t)) },
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onSettled: invalidate,
+  });
 }
 
 export function useRepo(id: string | undefined) {
@@ -171,6 +233,8 @@ export function useImport() {
       invalidate();
       void qc.invalidateQueries({ queryKey: keys.collections });
       void qc.invalidateQueries({ queryKey: ['repo'] });
+      void qc.invalidateQueries({ queryKey: ['tools'] });
+      void qc.invalidateQueries({ queryKey: keys.toolFacets });
     },
   });
 }
