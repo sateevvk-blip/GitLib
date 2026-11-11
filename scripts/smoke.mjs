@@ -92,6 +92,7 @@ try {
 
   const exp = await (await fetch(`${base}/api/export`)).json();
   check('экспорт', exp.format === 'gitlib-library' && exp.collections.length === 1);
+  check('экспорт содержит tools', exp.version === 2 && Array.isArray(exp.tools) && exp.tools.length === 1, String(exp.tools?.length));
 
   const unknown = await fetch(`${base}/api/nope`);
   check('404 для неизвестного API', unknown.status === 404);

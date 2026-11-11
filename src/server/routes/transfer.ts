@@ -17,7 +17,7 @@ export function registerTransferRoutes(app: FastifyInstance, deps: TransferDeps)
 
   app.post('/api/import/preview', async (req) => {
     const file = parseExportFile(req.body);
-    return previewImport(deps.store, file);
+    return previewImport(deps.store, deps.toolsStore, file);
   });
 
   app.post<{ Querystring: { strategy?: string } }>('/api/import', async (req) => {

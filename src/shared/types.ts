@@ -325,9 +325,16 @@ export interface ToolRecommendation {
 }
 
 export const EXPORT_FORMAT = 'gitlib-library';
-export const EXPORT_VERSION = 1;
+export const EXPORT_VERSION = 2;
 
 export type ExportedRepo = Repo & { avatarDataUrl?: string | null };
+
+/** Картинки инструмента — data URL; пути из файла как пути не используются. */
+export type ExportedTool = Tool & {
+  iconDataUrl?: string | null;
+  coverDataUrl?: string | null;
+  userImageDataUrl?: string | null;
+};
 
 export interface ExportFile {
   format: typeof EXPORT_FORMAT;
@@ -336,6 +343,8 @@ export interface ExportFile {
   app: string;
   repos: ExportedRepo[];
   collections: Collection[];
+  /** В файле версии 1 отсутствует — читается как []. */
+  tools: ExportedTool[];
 }
 
 export type DuplicateStrategy = 'skip' | 'merge' | 'replace';
@@ -345,6 +354,7 @@ export interface ImportPreview {
   exportedAt: string;
   repos: { total: number; new: number; duplicates: number; duplicateNames: string[] };
   collections: { total: number; new: number; existing: number };
+  tools: { total: number; new: number; duplicates: number; duplicateNames: string[] };
 }
 
 export interface ImportResult {
@@ -354,6 +364,8 @@ export interface ImportResult {
   skipped: number;
   collectionsCreated: number;
   collectionsUpdated: number;
+  /** Инструменты считаются отдельно от репозиториев. */
+  tools: { added: number; merged: number; replaced: number; skipped: number };
 }
 
 export interface ApiError {

@@ -141,7 +141,7 @@ export function buildApp(opts: AppOptions): AppContext {
   registerToolRoutes(app, toolsService);
   registerCollectionRoutes(app, service);
   registerSettingsRoutes(app, settings);
-  registerTransferRoutes(app, { store, dataDir: opts.dataDir, appVersion: config.appVersion });
+  registerTransferRoutes(app, { store, toolsStore, dataDir: opts.dataDir, appVersion: config.appVersion });
 
   // Аватары из папки данных
   const avatarsDir = path.join(opts.dataDir, 'avatars');

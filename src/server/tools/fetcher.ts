@@ -33,7 +33,7 @@ export interface FetchedPage { finalUrl: string; status: number; contentType: st
 export interface FetchedImage { finalUrl: string; contentType: string; ext: string; body: Buffer }
 
 const PAGE_TYPES = ['text/html', 'application/xhtml+xml', 'text/plain'];
-const IMAGE_EXT: Record<string, string> = {
+export const IMAGE_EXT: Record<string, string> = {
   'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
   'image/x-icon': 'ico', 'image/vnd.microsoft.icon': 'ico', 'image/svg+xml': 'svg',
 };
