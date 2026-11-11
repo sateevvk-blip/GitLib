@@ -89,9 +89,10 @@ export function registerRepoRoutes(app: FastifyInstance, service: LibraryService
   app.post<{ Params: { id: string } }>('/api/repos/:id/refresh', async (req) => service.refresh(req.params.id));
 
   app.post<{ Params: { id: string }; Querystring: { wait?: string } }>('/api/repos/:id/analyze', async (req) => {
-    const repo = service.requestAnalysis(req.params.id);
-    if (req.query.wait === '1') return service.runAnalysis(req.params.id);
-    return repo;
+    // wait=1 запускает анализ здесь же, без очереди — иначе он выполнится дважды.
+    const wait = req.query.wait === '1';
+    const repo = service.requestAnalysis(req.params.id, !wait);
+    return wait ? service.runAnalysis(req.params.id) : repo;
   });
 
   app.post<{ Params: { id: string } }>('/api/repos/:id/chat', async (req) => {

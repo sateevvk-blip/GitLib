@@ -102,6 +102,24 @@ describe('импорт', () => {
     expect(target.store.getByKey('octo/alpha')).toEqual(before);
   });
 
+  it('skip и merge не перезаписывают локальный файл аватара картинкой из импорта', () => {
+    const source = seeded();
+    fs.mkdirSync(path.join(source.dataDir, 'avatars'), { recursive: true });
+    fs.writeFileSync(path.join(source.dataDir, 'avatars', 'octo.png'), Buffer.from([1, 2, 3]));
+    source.store.update({ ...source.a, avatarPath: 'avatars/octo.png' });
+    const file = exportFrom(source);
+
+    for (const strategy of ['skip', 'merge'] as const) {
+      const target = seeded();
+      const localAvatar = path.join(target.dataDir, 'avatars', 'octo.png');
+      fs.mkdirSync(path.dirname(localAvatar), { recursive: true });
+      fs.writeFileSync(localAvatar, Buffer.from([9, 9]));
+      target.store.update({ ...target.a, avatarPath: 'avatars/octo.png' });
+      applyImport({ store: target.store, dataDir: target.dataDir, appVersion: '1.0.0' }, file, strategy);
+      expect([...fs.readFileSync(localAvatar)], strategy).toEqual([9, 9]);
+    }
+  });
+
   it('стратегия merge: заметки объединяются, темы — объединение, избранное сохраняется', () => {
     const source = seeded();
     const file = exportFrom(source);

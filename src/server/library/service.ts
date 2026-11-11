@@ -153,15 +153,15 @@ export class LibraryService {
 
   // ---------- AI ----------
 
-  /** Ставит анализ в очередь; возвращает запись со статусом pending. */
-  requestAnalysis(id: string): Repo {
+  /** Ставит анализ в очередь; возвращает запись со статусом pending. `enqueue = false` — вызывающий запустит анализ сам. */
+  requestAnalysis(id: string, enqueue = true): Repo {
     const repo = this.get(id);
     if (!this.settings.isLlmConfigured()) {
       throw new ValidationError('LLM не настроена. Укажите Base URL и модель в настройках.');
     }
     const pending: AnalysisData = { ...repo.analysis, status: 'pending', error: null };
     this.store.updateAnalysis(id, pending);
-    this.enqueueAnalysis(id);
+    if (enqueue) this.enqueueAnalysis(id);
     return { ...repo, analysis: pending };
   }
 

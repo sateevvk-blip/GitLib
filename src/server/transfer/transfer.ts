@@ -123,8 +123,15 @@ export function applyImport(deps: TransferDeps, file: ExportFile, strategy: Dupl
     for (const imported of file.repos) {
       const key = imported.key.toLowerCase();
       const local = store.getByKey(key);
+      if (local && strategy === 'skip') {
+        idMap.set(imported.id, local.id);
+        result.skipped += 1;
+        continue;
+      }
       const { avatarDataUrl, ...repoFields } = imported;
-      const avatarFromFile = writeAvatarFromDataUrl(deps.dataDir, avatarDataUrl, imported.github.ownerLogin);
+      // merge оставляет локальный аватар — тогда файл из импорта не должен его перезаписывать.
+      const keepLocalAvatar = local && strategy === 'merge' && local.avatarPath;
+      const avatarFromFile = keepLocalAvatar ? null : writeAvatarFromDataUrl(deps.dataDir, avatarDataUrl, imported.github.ownerLogin);
       const candidate: Repo = { ...repoFields, key, avatarPath: avatarFromFile ?? null };
 
       if (!local) {
@@ -136,10 +143,6 @@ export function applyImport(deps: TransferDeps, file: ExportFile, strategy: Dupl
         continue;
       }
       idMap.set(imported.id, local.id);
-      if (strategy === 'skip') {
-        result.skipped += 1;
-        continue;
-      }
       const merged = mergeImportedRepo(local, candidate, strategy);
       store.update(merged);
       if (strategy === 'replace') result.replaced += 1;

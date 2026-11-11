@@ -182,7 +182,7 @@ export function RepoChat({ target }: Props) {
         )}
         {history.map((m, i) => (
           <div key={i} className={`chat-msg${m.role === 'user' ? ' is-user' : ''}`}>
-            <div className="chat-bubble">{m.role === 'assistant' ? <Markdown markdown={m.content} repoUrl={target.htmlUrl} branch={target.branch} /> : m.content}</div>
+            <div className="chat-bubble">{m.role === 'assistant' ? <Markdown markdown={m.content} repoUrl={target.htmlUrl} branch={target.branch} noImages /> : m.content}</div>
             {m.role === 'assistant' && m.sources && m.sources.length > 0 && (
               <div className="chat-sources" title="Файлы репозитория, которые прочитал напарник">
                 <FileText size={12} />
