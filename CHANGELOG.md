@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+### Changed
+- Workflow App прикрепляет собранные архивы (Windows, macOS arm64 и x64) к релизу тега после сборок и smoke на всех платформах; если релиза нет — создаёт черновик; ручной запуск с параметром `tag` дособирает архивы к уже вышедшему релизу. Actions обновлены до версий на Node.js 24 (`checkout@v5`, `setup-node@v5`, `upload-artifact@v6`, `download-artifact@v7`).
+
 ## [1.2.0] — 2026-11-11
 
 ### Added

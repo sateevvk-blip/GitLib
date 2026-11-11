@@ -4,6 +4,10 @@ name: App
 # Значок компилируется инструментами своей ОС, поэтому каждая платформа собирается на своём раннере.
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза, к которому прикрепить архивы (например v1.2.0); пусто — только собрать'
+        required: false
   push:
     tags: ['v*']
 
@@ -11,8 +15,8 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -20,7 +24,7 @@ jobs:
       - run: npm run bundle:app -- --target win-x64
       - shell: bash
         run: node scripts/smoke.mjs --exe release/*/gitlib-*-windows-x64/gitlib-server.exe
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: gitlib-windows
           path: release/*/*.zip
@@ -28,15 +32,15 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run bundle:app -- --target darwin-arm64,darwin-x64
       - run: node scripts/smoke.mjs --exe release/*/gitlib-*-macos-arm64/GitLib.app/Contents/Resources/gitlib-server
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: gitlib-macos
           path: release/*/*.zip
@@ -46,8 +50,8 @@ jobs:
     # Последний Intel-образ GitHub Actions; если его снимут — удалить задание.
     runs-on: macos-15-intel
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
         with:
           name: gitlib-macos
           path: release
@@ -55,3 +59,26 @@ jobs:
           # Артефакт сохраняет папку версии: release/<версия>/gitlib-*-macos-x64.zip
           unzip -q release/*/gitlib-*-macos-x64.zip -d release
           node scripts/smoke.mjs --exe release/gitlib-*-macos-x64/GitLib.app/Contents/Resources/gitlib-server
+
+  # Архивы прикрепляются к релизу тега только после сборок и smoke на всех платформах.
+  release:
+    needs: [windows, macos, smoke-macos-intel]
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          path: zips
+          merge-multiple: true
+      - run: |
+          files=$(find zips -name "gitlib-${TAG#v}-*.zip")
+          # Версия в именах архивов берётся из package.json: не совпала с тегом — не прикрепляем чужую сборку.
+          [ -n "$files" ] || { echo "Нет архивов gitlib-${TAG#v}-*.zip:"; find zips -name '*.zip'; exit 1; }
+          gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$TAG" -R "$GITHUB_REPOSITORY" --verify-tag --draft --title "GitLib ${TAG#v}" --notes "Черновик: архивы собраны workflow App, описание допишите перед публикацией."
+          gh release upload "$TAG" $files -R "$GITHUB_REPOSITORY" --clobber
