@@ -225,6 +225,28 @@ describe('POST /api/tools', () => {
     expect((await t.post('/api/tools', { url: 'https://manual.example', manual: { title: 'x' } })).statusCode).toBe(409);
   });
 
+  it('ручная карточка на внутренний адрес разрешена: 201, сеть не используется; refresh отклоняется загрузчиком', async () => {
+    let netCalls = 0;
+    const t = setup({
+      fetchPage: async () => {
+        netCalls += 1;
+        throw new FetchError('Адрес ведёт во внутреннюю сеть', 'url_forbidden');
+      },
+      fetchImage: async () => {
+        netCalls += 1;
+        throw new Error('сеть не должна использоваться');
+      },
+    });
+    const res = await t.post('/api/tools', { url: 'http://127.0.0.1:8080/', manual: { title: 'Локальный сервис' } });
+    expect(res.statusCode).toBe(201);
+    expect(netCalls).toBe(0);
+    const tool = res.json<Tool>();
+    const r = await t.post(`/api/tools/${tool.id}/refresh`, undefined);
+    expect(r.statusCode).toBe(422);
+    expect(r.json()).toMatchObject({ code: 'url_forbidden' });
+    expect(await t.get(tool.id)).toEqual(tool);
+  });
+
   it('ручное создание без описания не запускает анализ', async () => {
     const t = setup();
     const tool = (await t.post('/api/tools', { url: 'https://nodesc.example', manual: { title: 'Без описания' } })).json<Tool>();
@@ -245,6 +267,20 @@ describe('чтение, PATCH, удаление', () => {
     const facets = (await t.app.inject({ method: 'GET', url: '/api/tools/facets' })).json();
     expect(facets).toMatchObject({ total: 2, drafts: 1 });
     expect((await t.app.inject({ method: 'GET', url: '/api/tools/nope' })).statusCode).toBe(404);
+  });
+
+  it('списковые фильтры — повторяющиеся параметры; запятая внутри значения не делит его', async () => {
+    const t = setup({ llm: false });
+    const m = (url: string, title: string, category: string, tags: string[]) => t.post('/api/tools', { url, manual: { title, category, tags } });
+    await m('https://a.example', 'A', 'Дизайн, прототипы', ['ui']);
+    await m('https://b.example', 'B', 'Frontend', ['react', 'ts']);
+    await m('https://c.example', 'C', 'Backend', ['go']);
+    const total = async (qs: string) => (await t.app.inject({ method: 'GET', url: `/api/tools?${qs}` })).json<{ items: ToolSummary[] }>().items.map((i) => i.user.title).sort();
+    expect(await total(`categories=${encodeURIComponent('Дизайн, прототипы')}`)).toEqual(['A']);
+    expect(await total('categories=Frontend&categories=Backend')).toEqual(['B', 'C']);
+    expect(await total('tags=react&tags=ts')).toEqual(['B']);
+    expect(await total('tags=react')).toEqual(['B']);
+    expect(await total('categories=Frontend,Backend')).toEqual([]);
   });
 
   it('PATCH не трогает source и analysis; imagePath и неизвестные поля → 400', async () => {

@@ -6,15 +6,14 @@ import { ValidationError } from '../errors.js';
 
 const SORT_KEYS: ToolSortKey[] = ['added', 'updated', 'name'];
 
-// shortcut: csv/parseBody дублируют routes/repos.ts (не мои файлы в T6); вынести в routes/util.ts при ближайшей правке repos.ts.
-function csv(v: unknown): string[] | undefined {
-  if (typeof v !== 'string' || !v.trim()) return undefined;
-  return v
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+/** Повторяющиеся параметры (?tags=a&tags=b); по запятой не делим: категории и теги — свободный текст. */
+function many(v: unknown): string[] | undefined {
+  const list = (Array.isArray(v) ? v : [v]).filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean);
+  if (list.length > 100 || list.some((x) => x.length > 300)) throw new ValidationError('Слишком много значений фильтра или значение слишком длинное');
+  return list.length ? list : undefined;
 }
 
+// shortcut: parseBody дублирует routes/repos.ts (не мой файл в T6); вынести в routes/util.ts при ближайшей правке repos.ts.
 function parseBody<T>(schema: z.ZodType<T>, body: unknown): T {
   const r = schema.safeParse(body);
   if (!r.success) {
@@ -30,8 +29,8 @@ function parseQuery(raw: Record<string, unknown>): ToolQuery {
   const sort = typeof raw.sort === 'string' && SORT_KEYS.includes(raw.sort as ToolSortKey) ? (raw.sort as ToolSortKey) : 'added';
   return {
     q: typeof raw.q === 'string' ? raw.q : undefined,
-    categories: csv(raw.categories),
-    tags: csv(raw.tags),
+    categories: many(raw.categories),
+    tags: many(raw.tags),
     favorite: flag(raw.favorite),
     drafts: flag(raw.drafts),
     noAnalysis: flag(raw.noAnalysis),
