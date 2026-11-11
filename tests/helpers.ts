@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { GithubData, Repo } from '../src/shared/types.js';
-import { emptyAnalysis, newUserData } from '../src/shared/merge.js';
+import type { GithubData, Repo, Tool, ToolSource } from '../src/shared/types.js';
+import { emptyAnalysis, emptyToolAnalysis, newToolUser, newUserData } from '../src/shared/merge.js';
+import { normalizeToolUrl } from '../src/shared/tool-url.js';
 import { openDatabase } from '../src/server/db/database.js';
 import { LibraryStore } from '../src/server/library/store.js';
 import { SettingsStore } from '../src/server/settings.js';
@@ -51,6 +52,38 @@ export function makeRepo(fullName = 'octo/test', overrides: Partial<Repo> = {}):
     github: makeGithub({ htmlUrl: `https://github.com/${fullName}`, ownerLogin: owner }),
     analysis: emptyAnalysis(),
     user: newUserData(now),
+    ...overrides,
+  };
+}
+
+export function makeSource(overrides: Partial<ToolSource> = {}): ToolSource {
+  return {
+    status: 'ok',
+    finalUrl: null,
+    title: 'Example Tool',
+    description: 'A test tool',
+    siteName: null,
+    lang: 'en',
+    text: 'Example page text',
+    textChars: 17,
+    iconPath: null,
+    imagePath: null,
+    fetchedAt: '2026-01-02T00:00:00.000Z',
+    error: null,
+    ...overrides,
+  };
+}
+
+export function makeTool(url = 'https://example.com', overrides: Partial<Tool> = {}): Tool {
+  const n = normalizeToolUrl(url);
+  counter += 1;
+  const now = new Date(Date.UTC(2026, 0, 1, 0, 0, counter)).toISOString();
+  return {
+    id: `tool-${counter}`,
+    ...n,
+    source: makeSource(),
+    analysis: emptyToolAnalysis(),
+    user: newToolUser(now),
     ...overrides,
   };
 }

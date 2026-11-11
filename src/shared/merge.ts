@@ -1,7 +1,21 @@
 /**
  * Правила слияния данных. Единственное место, где решается, что перезаписывается, а что нет.
  */
-import type { AnalysisData, Collection, GithubData, Repo, UserData, DuplicateStrategy, UserPatch } from './types.js';
+import type {
+  AnalysisData,
+  Collection,
+  GithubData,
+  Repo,
+  UserData,
+  DuplicateStrategy,
+  UserPatch,
+  Tool,
+  ToolAnalysis,
+  ToolOverrides,
+  ToolPatch,
+  ToolSource,
+  ToolUser,
+} from './types.js';
 import { REPO_STATUSES } from './types.js';
 
 export function emptyAnalysis(): AnalysisData {
@@ -71,20 +85,7 @@ export function mergeImportedRepo(local: Repo, imported: Repo, strategy: Duplica
     return { ...imported, id: local.id, avatarPath: imported.avatarPath ?? local.avatarPath };
   }
   const github = (imported.github.fetchedAt ?? '') > (local.github.fetchedAt ?? '') ? imported.github : local.github;
-  const pickAnalysis = (): AnalysisData => {
-    if (local.analysis.status !== 'done' && imported.analysis.status === 'done') return imported.analysis;
-    if (local.analysis.status === 'done' && imported.analysis.status === 'done') {
-      return (imported.analysis.generatedAt ?? '') > (local.analysis.generatedAt ?? '') ? imported.analysis : local.analysis;
-    }
-    return local.analysis;
-  };
-  const localNotes = local.user.notes.trim();
-  const importedNotes = imported.user.notes.trim();
-  let notes = local.user.notes;
-  if (!localNotes) notes = imported.user.notes;
-  else if (importedNotes && importedNotes !== localNotes && !localNotes.includes(importedNotes)) {
-    notes = `${local.user.notes.trimEnd()}${IMPORT_NOTES_SEPARATOR}${importedNotes}`;
-  }
+  const notes = mergeNotes(local.user.notes, imported.user.notes);
   const status =
     (STATUS_RANK[imported.user.status] ?? 0) > (STATUS_RANK[local.user.status] ?? 0) ? imported.user.status : local.user.status;
   const user: UserData = {
@@ -98,10 +99,135 @@ export function mergeImportedRepo(local: Repo, imported: Repo, strategy: Duplica
   return {
     ...local,
     github,
-    analysis: pickAnalysis(),
+    analysis: pickAnalysis(local.analysis, imported.analysis),
     avatarPath: local.avatarPath ?? imported.avatarPath,
     user,
   };
+}
+
+/** Заметки при импорте: пустые заменяются, разные — склеиваются, повтор не дублируется. */
+function mergeNotes(local: string, imported: string): string {
+  const l = local.trim();
+  const i = imported.trim();
+  if (!l) return imported;
+  if (i && i !== l && !l.includes(i)) return `${local.trimEnd()}${IMPORT_NOTES_SEPARATOR}${i}`;
+  return local;
+}
+
+/** Готовый анализ побеждает неготовый; из двух готовых — более свежий. */
+function pickAnalysis<A extends { status: string; generatedAt: string | null }>(local: A, imported: A): A {
+  if (local.status !== 'done' && imported.status === 'done') return imported;
+  if (local.status === 'done' && imported.status === 'done') {
+    return (imported.generatedAt ?? '') > (local.generatedAt ?? '') ? imported : local;
+  }
+  return local;
+}
+
+// ───── Инструменты ─────
+
+export function emptyToolAnalysis(): ToolAnalysis {
+  return {
+    status: 'none',
+    summary: null,
+    purpose: null,
+    audience: null,
+    features: [],
+    useCases: [],
+    limitations: [],
+    suggestedTags: [],
+    suggestedCategory: null,
+    model: null,
+    generatedAt: null,
+    error: null,
+    basedOn: null,
+  };
+}
+
+export function newToolUser(now = new Date().toISOString()): ToolUser {
+  return {
+    title: null,
+    description: null,
+    category: null,
+    tags: [],
+    notes: '',
+    favorite: false,
+    confirmed: false,
+    imagePath: null,
+    overrides: {},
+    addedAt: now,
+    updatedAt: now,
+  };
+}
+
+/** Обновление страницы: заменяется только блок source. */
+export function applyToolSource(tool: Tool, source: ToolSource): Tool {
+  return { ...tool, source };
+}
+
+/** Повторный анализ: заменяется только блок analysis; user.overrides не читается и не пишется. */
+export function applyToolAnalysis(tool: Tool, analysis: ToolAnalysis): Tool {
+  return { ...tool, analysis };
+}
+
+const OVERRIDE_FIELDS = ['summary', 'purpose', 'audience', 'features', 'useCases', 'limitations'] as const;
+const blankToNull = (v: string | null): string | null => v?.trim() || null;
+const cleanList = (list: string[]): string[] => list.map((s) => String(s ?? '').trim()).filter(Boolean);
+
+export function applyToolPatch(tool: Tool, patch: ToolPatch, now = new Date().toISOString()): Tool {
+  const user: ToolUser = { ...tool.user };
+  if (patch.title !== undefined) user.title = blankToNull(patch.title);
+  if (patch.description !== undefined) user.description = blankToNull(patch.description);
+  if (patch.category !== undefined) user.category = blankToNull(patch.category);
+  if (patch.tags !== undefined) user.tags = normalizeTopicList(patch.tags);
+  if (patch.notes !== undefined) user.notes = String(patch.notes);
+  if (patch.favorite !== undefined) user.favorite = Boolean(patch.favorite);
+  if (patch.confirmed !== undefined) user.confirmed = Boolean(patch.confirmed);
+  if (patch.overrides !== undefined) {
+    const o: Record<string, unknown> = { ...user.overrides };
+    for (const field of OVERRIDE_FIELDS) {
+      const value = patch.overrides[field];
+      if (value === undefined) continue;
+      // null и пустая строка снимают правку; пустой список — осознанная правка «ничего нет».
+      const next = Array.isArray(value) ? cleanList(value) : typeof value === 'string' ? value.trim() : null;
+      if (next === null || next === '') delete o[field];
+      else o[field] = next;
+    }
+    user.overrides = o as ToolOverrides;
+  }
+  user.updatedAt = now;
+  return { ...tool, user };
+}
+
+/** Своя картинка: меняется только user.imagePath (файл скачивает сервис). */
+export function applyToolImage(tool: Tool, imagePath: string | null, now = new Date().toISOString()): Tool {
+  return { ...tool, user: { ...tool.user, imagePath, updatedAt: now } };
+}
+
+/**
+ * Слияние инструмента при импорте дубликата (тот же key). Адрес и id остаются локальными.
+ * Заметки склеиваются, теги объединяются, избранное и confirmed — ИЛИ, правки overrides — локальные
+ * приоритетнее, недостающие берутся из файла; source и analysis — более свежие.
+ * Пути картинок в source/user.imagePath принадлежат записи-победителю: файлы раскладывает импорт (T8).
+ */
+export function mergeImportedTool(local: Tool, imported: Tool, strategy: DuplicateStrategy): Tool {
+  if (strategy === 'skip') return local;
+  if (strategy === 'replace') return { ...imported, id: local.id };
+  const source = (imported.source.fetchedAt ?? '') > (local.source.fetchedAt ?? '') ? imported.source : local.source;
+  const localOverrides = Object.fromEntries(Object.entries(local.user.overrides).filter(([, v]) => v !== undefined));
+  const user: ToolUser = {
+    title: local.user.title ?? imported.user.title,
+    description: local.user.description ?? imported.user.description,
+    category: local.user.category ?? imported.user.category,
+    tags: normalizeTopicList([...local.user.tags, ...imported.user.tags]),
+    notes: mergeNotes(local.user.notes, imported.user.notes),
+    favorite: local.user.favorite || imported.user.favorite,
+    confirmed: local.user.confirmed || imported.user.confirmed,
+    imagePath: local.user.imagePath ?? imported.user.imagePath,
+    overrides: { ...imported.user.overrides, ...localOverrides },
+    addedAt: local.user.addedAt < imported.user.addedAt ? local.user.addedAt : imported.user.addedAt,
+    updatedAt: new Date().toISOString(),
+  };
+  return { ...local, source, analysis: pickAnalysis(local.analysis, imported.analysis), user };
 }
 
 export function mergeCollection(

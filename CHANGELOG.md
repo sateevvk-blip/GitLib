@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+### Added
+- Подготовка раздела «Инструменты» (библиотека сайтов, сервисов и библиотек с AI-описанием): аудит документации и harness, анализ ТЗ, спецификация и план для агентов — `docs/tools-library/` (локально, вне репозитория). Кода приложения изменение не затрагивает.
+- Обвязка Claude Code под раздел «Инструменты» (локально): карта кода в `CLAUDE.md` приведена к версии 1.1.0, инварианты 1, 2 и 8 распространены на инструменты (внешние вызовы — GitHub, LLM и добавленные пользователем страницы через безопасный загрузчик); новое правило `.claude/rules/external-fetch.md` (SSRF, лимиты, недоверенный текст в промпте); `data-safety.md`, навык `gitlib-feature` и чек-лист `gitlib-reviewer` дополнены под вторую сущность.
+- Команда агентов по уровням моделей (локально, `.claude/agents/`): `gitlib-architect` (Fable — спецификации, подсказки к сложным задачам, эскалации), `gitlib-reviewer`, `gitlib-security`, `gitlib-ux` (Opus — ревью, проверка безопасности, UX), `gitlib-coder`, `gitlib-ui-coder`, `gitlib-qa` (Sonnet — код и прогон проверок); протокол ведущего — навык `gitlib-lead`; план `docs/tools-library/03-agent-plan.md` дополнен распределением задач, циклом ревью и журналами.
+- Сторонние навыки в `.claude/skills/` (локально, только Markdown-инструкции, MIT): 15 навыков [emilkowalski/skills](https://github.com/emilkowalski/skills), `motion-design` из [LottieFiles/motion-design-skill](https://github.com/LottieFiles/motion-design-skill), `ponytail`, `ponytail-review`, `ponytail-audit`, `ponytail-debt` из [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail) ; версии и границы применения — `.claude/THIRD-PARTY-SKILLS.md`.
+- Плагин ponytail 5.3.3 установлен на уровне проекта (`.claude/settings.json`, локально): хуки подставляют правила «наименьшего достаточного изменения» в сессию и в субагентов; webhook не настроен.
+- Подсказки архитектора к сложным задачам раздела «Инструменты»: `docs/tools-library/hints/T2.md` (безопасный загрузчик), `T5.md` (слой LLM и анализатор), `T6.md` (очередь, сервис, маршруты), `T10.md` (карточка и правки поверх AI), `T11.md` (обобщение чата и подбор в интерфейсе).
+- Общие типы и чистая логика раздела «Инструменты» (T1): модель инструмента (`source` / `analysis` / `user`), нормализация и ключ дедупликации адреса (`normalizeToolUrl`; кириллические домены показываются в Unicode, прочие IDN — в punycode), поиск, фильтры, фасеты и скоринг для подбора по русскому и английскому (`scoreTools`), правила слияния и импорта (`applyToolPatch`, `applyToolImage`, `mergeImportedTool`), с тестами. В интерфейсе и API пока не используется.
+
 ### Fixed
 - Workflow App: задание smoke на Intel Mac не находило архив — артефакт `gitlib-macos` сохраняет папку версии (`release/<версия>/`), а распаковка искала zip в корне `release/`.
 
