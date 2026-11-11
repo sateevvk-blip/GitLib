@@ -9,7 +9,7 @@ import {
   emptyToolAnalysis,
   mergeImportedTool,
 } from '../src/shared/merge.js';
-import { isAnalysisStale, toolField } from '../src/shared/tools.js';
+import { isAnalysisStale, isDescriptionOverridden, toolAiField, toolSourceDescription, toolField } from '../src/shared/tools.js';
 import type { Tool, ToolAnalysis } from '../src/shared/types.js';
 
 const done = (generatedAt: string, summary: string): ToolAnalysis => ({ ...emptyToolAnalysis(), status: 'done', summary, generatedAt });
@@ -135,5 +135,30 @@ describe('isAnalysisStale', () => {
     const t = analysed('2025-01-01T00:00:00.000Z');
     expect(isAnalysisStale({ ...t, analysis: { ...t.analysis, status: 'none' } })).toBe(false);
     expect(isAnalysisStale({ ...t, analysis: { ...t.analysis, status: 'failed' } })).toBe(false);
+  });
+});
+
+describe('toolAiField и описание', () => {
+  it('без анализа версии AI нет; с анализом — поля AI, ограничения — их тексты', () => {
+    const t = makeTool();
+    expect(toolAiField(t, 'summary')).toBeNull();
+    expect(toolAiField(t, 'features')).toBeNull();
+    const a: Tool = { ...t, analysis: { ...t.analysis, status: 'done', generatedAt: '2026-01-03T00:00:00.000Z', summary: 'AI', features: ['а'], limitations: [{ text: 'огр', evidence: 'цитата' }] } };
+    expect(toolAiField(a, 'summary')).toBe('AI');
+    expect(toolAiField(a, 'purpose')).toBe('');
+    expect(toolAiField(a, 'features')).toEqual(['а']);
+    expect(toolAiField(a, 'limitations')).toEqual(['огр']);
+    // правка пользователя версию AI не меняет
+    expect(toolAiField(applyToolPatch(a, { overrides: { summary: 'своё' } }), 'summary')).toBe('AI');
+  });
+
+  it('описание: правка поверх страницы — да, у ручной карточки — нет', () => {
+    const page = { ...makeTool(), source: makeSource({ status: 'ok', description: 'со страницы' }) };
+    expect(isDescriptionOverridden(page)).toBe(false);
+    expect(isDescriptionOverridden(applyToolPatch(page, { description: 'своё' }))).toBe(true);
+    expect(toolSourceDescription(page)).toBe('со страницы');
+    const manual = applyToolPatch({ ...makeTool(), source: makeSource({ status: 'manual', description: null }) }, { description: 'своё' });
+    expect(isDescriptionOverridden(manual)).toBe(false);
+    expect(toolSourceDescription(manual)).toBeNull();
   });
 });

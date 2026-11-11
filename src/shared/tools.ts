@@ -59,3 +59,22 @@ export function isAnalysisStale(t: ToolSummary): boolean {
   const based = analysis.basedOn.sourceFetchedAt;
   return based === null || based < source.fetchedAt;
 }
+
+/** Версия AI поля сводки; null — анализа ещё не было. Прошлая сводка остаётся и при новом анализе или его сбое. */
+export function toolAiField(t: ToolSummary, field: keyof ToolOverrides): string | string[] | null {
+  const a = t.analysis;
+  if (a.generatedAt === null) return null;
+  if (field === 'limitations') return a.limitations.map((l) => l.text);
+  if (field === 'features' || field === 'useCases') return a[field];
+  return a[field] ?? '';
+}
+
+/** Описание со страницы; null — страница его не дала (или карточка ручная). */
+export function toolSourceDescription(t: ToolSummary): string | null {
+  return t.source.description?.trim() || null;
+}
+
+/** Описание «изменено пользователем» относительно страницы. У ручной карточки описание и есть основа — правкой оно не считается. */
+export function isDescriptionOverridden(t: ToolSummary): boolean {
+  return t.user.description !== null && t.source.status !== 'manual';
+}

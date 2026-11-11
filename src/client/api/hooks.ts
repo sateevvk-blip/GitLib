@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, ToolPatch, ToolQuery, ToolSummary, UserPatch } from '../../shared/types.js';
+import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, Tool, ToolPatch, ToolQuery, ToolSummary, UserPatch } from '../../shared/types.js';
+import { applyToolPatch } from '../../shared/merge.js';
 import { api, queryToParams, toolQueryToParams, type ManualTool } from './client';
 
 export const keys = {
@@ -8,6 +9,7 @@ export const keys = {
   repo: (id: string) => ['repo', id] as const,
   facets: ['facets'] as const,
   tools: (q: ToolQuery) => ['tools', toolQueryToParams(q).toString()] as const,
+  tool: (id: string) => ['tool', id] as const,
   toolFacets: ['tool-facets'] as const,
   collections: ['collections'] as const,
   settings: ['settings'] as const,
@@ -67,17 +69,64 @@ export function usePatchTool() {
   const invalidate = useInvalidateTools();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: ToolPatch }) => api.patchTool(id, patch),
-    // Звезда меняется сразу, не дожидаясь ответа; при ошибке возвращаем прежний список.
+    // Звезда и правка видны сразу, не дожидаясь ответа; при ошибке возвращаем прежнее. Карточку правит та же
+    // applyToolPatch, что и сервер: overrides сливаются с текущими, null снимает правку.
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ['tools'] });
+      await qc.cancelQueries({ queryKey: keys.tool(id) });
       const prev = qc.getQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] });
       qc.setQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] }, (d) =>
         d && { ...d, items: d.items.map((t) => (t.id === id && patch.favorite !== undefined ? { ...t, user: { ...t.user, favorite: patch.favorite } } : t)) },
       );
-      return { prev };
+      const prevTool = qc.getQueryData<Tool>(keys.tool(id));
+      if (prevTool) qc.setQueryData<Tool>(keys.tool(id), applyToolPatch(prevTool, patch));
+      return { prev, prevTool };
     },
-    onError: (_e, _v, ctx) => ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data)),
+    onError: (_e, { id }, ctx) => {
+      ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data));
+      if (ctx?.prevTool) qc.setQueryData(keys.tool(id), ctx.prevTool);
+    },
+    onSuccess: (tool) => qc.setQueryData(keys.tool(tool.id), tool),
     onSettled: invalidate,
+  });
+}
+
+/** Карточка инструмента; пока идёт анализ, перечитывается раз в 2 с. */
+export function useTool(id: string | undefined) {
+  return useQuery({
+    queryKey: keys.tool(id ?? ''),
+    queryFn: () => api.getTool(id!),
+    enabled: Boolean(id),
+    refetchInterval: (query) => (query.state.data?.analysis.status === 'pending' ? 2000 : false),
+  });
+}
+
+/** Действие над карточкой, отвечающее обновлённой записью: обновить страницу, анализ, своя картинка. */
+function useToolAction<V>(run: (v: V) => Promise<Tool>) {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateTools();
+  return useMutation({
+    mutationFn: run,
+    onSuccess: (tool) => {
+      qc.setQueryData(keys.tool(tool.id), tool);
+      invalidate();
+    },
+  });
+}
+
+export const useRefreshTool = () => useToolAction((id: string) => api.refreshTool(id));
+export const useAnalyzeTool = () => useToolAction((id: string) => api.analyzeTool(id));
+export const useSetToolImage = () => useToolAction(({ id, imageUrl }: { id: string; imageUrl: string | null }) => api.setToolImage(id, imageUrl));
+
+export function useDeleteTool() {
+  const qc = useQueryClient();
+  const invalidate = useInvalidateTools();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteTool(id),
+    onSuccess: (_d, id) => {
+      qc.removeQueries({ queryKey: keys.tool(id) });
+      invalidate();
+    },
   });
 }
 

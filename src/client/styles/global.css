@@ -1414,6 +1414,288 @@ h3 {
   background: var(--cobalt-soft);
 }
 
+/* ---------- tools: карточка инструмента ---------- */
+
+.tool-head .repo-head-main {
+  min-width: min(260px, 100%);
+}
+.tool-head-domain {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tool-head-category.after-domain::before {
+  content: '· ';
+}
+.tool-head-category {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tool-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.tool-title {
+  min-width: 0;
+  font-size: 26px;
+  overflow-wrap: anywhere;
+  /* длинное название не должно занимать весь первый экран; полное — в подсказке и в поле правки */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+.category-custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.category-custom .input {
+  flex: 1 1 100%;
+}
+.field-more {
+  margin-top: 6px;
+}
+.tool-nowrap {
+  white-space: nowrap;
+}
+.tool-title-row .btn {
+  flex: none;
+  margin-top: 1px;
+}
+.tool-title-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tool-title-input {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
+.tool-draft {
+  margin: -8px 0 22px;
+}
+.tool-notice {
+  margin-bottom: 14px;
+}
+.tool-notice > span:not(.spinner) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tool-notice .btn {
+  margin-left: auto;
+}
+.chip.is-user a {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tag-user {
+  color: var(--coral-ink);
+  border-color: var(--coral-ink);
+  background: var(--coral-soft);
+}
+
+/* Поле сводки: просмотр, правка, сравнение с версией AI */
+.field-stack {
+  display: flex;
+  flex-direction: column;
+}
+.field-edit {
+  min-width: 0;
+  padding: 14px 0;
+  border-top: 1px dotted var(--line-strong);
+}
+.field-stack > .field-edit:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.tool-head .field-edit {
+  margin-top: 8px;
+  padding: 0;
+  border-top: 0;
+}
+.field-edit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 4px;
+}
+.field-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-left: auto;
+}
+.field-text p {
+  margin: 0 0 8px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.field-text p:last-child {
+  margin-bottom: 0;
+}
+.field-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field-list li,
+.field-edit .usecases li {
+  position: relative;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.field-list li {
+  padding-left: 18px;
+}
+.field-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.8em;
+  width: 10px;
+  border-top: 1px solid var(--cobalt);
+}
+.field-empty {
+  margin: 0;
+  color: var(--ink-3);
+  font-style: italic;
+}
+.field-cite {
+  display: block;
+  margin-top: 3px;
+  padding-left: 8px;
+  border-left: 2px dashed var(--cobalt-line);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.field-ai {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px dashed var(--cobalt);
+  border-radius: var(--radius);
+  background: var(--cobalt-soft);
+  animation: fade-up var(--dur-base) var(--ease-out) backwards;
+}
+.field-ai-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.field-edit-area {
+  width: 100%;
+  font-size: 15px;
+}
+.field-edit-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+.field-edit-foot .field-hint {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: 12.5px;
+}
+.field-edit-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.field-error {
+  color: var(--danger);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.tool-preview {
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--paper-3);
+}
+.tool-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.tool-image-remove {
+  align-self: flex-start;
+}
+.tool-url {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.tool-fact {
+  font-size: 14px;
+}
+.tool-fact-error {
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--coral-ink);
+  overflow-wrap: anywhere;
+}
+.confirm-box h3,
+.confirm-box p {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 560px) {
+  .tool-title {
+    font-size: 22px;
+    -webkit-line-clamp: 2;
+  }
+  .field-keys {
+    display: none;
+  }
+  .tool-head .repo-actions .btn {
+    min-height: 44px;
+  }
+  .tool-head .repo-actions .btn-icon {
+    width: 44px;
+  }
+  .tool-title-input,
+  .field-edit-area,
+  .tool-page .topics-add .input,
+  .tool-page .select {
+    font-size: 16px; /* меньше 16px — iOS приближает страницу при фокусе */
+  }
+  .tool-head .repo-actions {
+    width: 100%;
+  }
+  .field-edit-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+  .field-edit-buttons {
+    width: 100%;
+  }
+  .field-edit-buttons .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
 /* Добавление инструмента */
 .confirm.add-tool-overlay {
   --add-tool-top: min(12vh, 96px);
@@ -3722,7 +4004,8 @@ h3 {
   .confirm-box,
   .add-tool-hint,
   .add-tool-error,
-  .add-tool-manual {
+  .add-tool-manual,
+  .field-ai {
     animation-name: fade-in;
     animation-duration: var(--dur-quick);
     animation-timing-function: linear;

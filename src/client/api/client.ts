@@ -115,6 +115,12 @@ export const api = {
   addTool: (url: string, manual?: ManualTool) => request<Tool>('/api/tools', { method: 'POST', body: JSON.stringify(manual ? { url, manual } : { url }) }),
   patchTool: (id: string, patch: ToolPatch) =>
     request<Tool>(`/api/tools/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+  getTool: (id: string) => request<Tool>(`/api/tools/${encodeURIComponent(id)}`),
+  deleteTool: (id: string) => request<void>(`/api/tools/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  refreshTool: (id: string) => request<Tool>(`/api/tools/${encodeURIComponent(id)}/refresh`, { method: 'POST' }),
+  analyzeTool: (id: string) => request<Tool>(`/api/tools/${encodeURIComponent(id)}/analyze`, { method: 'POST' }),
+  setToolImage: (id: string, imageUrl: string | null) =>
+    request<Tool>(`/api/tools/${encodeURIComponent(id)}/image`, { method: 'PUT', body: JSON.stringify({ imageUrl }) }),
 
   listCollections: () => request<Collection[]>('/api/collections'),
   createCollection: (name: string, description = '') =>
