@@ -9,7 +9,7 @@ import { errorMessage } from '../lib/toast';
 import { useOnline } from '../lib/online';
 import { CHARACTERS } from './characters';
 import { useCharacter } from './choice';
-import { chatKey, chatLabel, chatShortName, closeChat, getHistory, saveHistory, scrollAnchor, setChatPending, starterQuestions, useChat, type ChatTarget } from './chat';
+import { chatKey, chatLabel, chatShortName, closeChat, getChatState, getHistory, saveHistory, scrollAnchor, setChatPending, starterQuestions, useChat, type ChatTarget } from './chat';
 import { hold, phrases, react, release } from './store';
 
 interface Props {
@@ -57,8 +57,11 @@ export function RepoChat({ target }: Props) {
       react('dizzy', phrases.chatFailed, 3500);
     },
     onSettled: (_r, _e, { target: t }) => {
-      setChatPending(null);
-      release(HOLD_KEY);
+      // Пока шёл этот ответ, могли спросить про другую запись — её ожидание не трогаем.
+      if (getChatState().pendingId === chatKey(t)) {
+        setChatPending(null);
+        release(HOLD_KEY);
+      }
       if (chatKey(t) === key) setHistory(getHistory(key));
     },
   });

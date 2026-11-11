@@ -13,7 +13,7 @@ import type {
   Tool,
 } from '../../shared/types.js';
 import { EXPORT_FORMAT, EXPORT_VERSION } from '../../shared/types.js';
-import { mergeCollection, mergeImportedRepo, mergeImportedTool } from '../../shared/merge.js';
+import { mergeCollection, mergeImportedRepo, mergeImportedTool, settlePendingAnalysis } from '../../shared/merge.js';
 import { normalizeToolUrl } from '../../shared/tool-url.js';
 import { config } from '../config.js';
 import { IMAGE_EXT } from '../tools/fetcher.js';
@@ -107,7 +107,8 @@ function readAvatarDataUrl(dataDir: string, avatarPath: string | null): string |
   }
 }
 
-function writeAvatarFromDataUrl(dataDir: string, dataUrl: string | null | undefined, ownerLogin: string): string | null {
+/** Как writeToolImage: файл ложится на место только после COMMIT, при откате импорта аватар остаётся прежним. */
+function writeAvatarFromDataUrl(dataDir: string, ops: FileOps, dataUrl: string | null | undefined, ownerLogin: string): string | null {
   if (!dataUrl) return null;
   const m = dataUrl.match(/^data:(image\/[a-z+]+);base64,(.+)$/i);
   if (!m) return null;
@@ -115,11 +116,13 @@ function writeAvatarFromDataUrl(dataDir: string, dataUrl: string | null | undefi
   const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/gif' ? 'gif' : mime === 'image/webp' ? 'webp' : 'png';
   const safe = ownerLogin.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   const rel = `avatars/${safe}.${ext}`;
+  const tmp = path.join(dataDir, 'avatars', `.import-${randomUUID()}.tmp`);
   try {
     const buf = Buffer.from(m[2]!, 'base64');
     if (buf.length === 0 || buf.length > 2_000_000) return null;
     fs.mkdirSync(path.join(dataDir, 'avatars'), { recursive: true });
-    fs.writeFileSync(path.join(dataDir, rel), buf);
+    fs.writeFileSync(tmp, buf);
+    ops.writes.push({ tmp, final: path.join(dataDir, rel) });
     return rel;
   } catch {
     return null;
@@ -208,9 +211,6 @@ export function previewImport(store: LibraryStore, toolsStore: ToolsStore, file:
   };
 }
 
-/** «Идёт анализ» из файла не живёт: очереди в этом запуске нет — то же правило, что у recoverPending. */
-const settle = <A extends { status: string; summary: unknown; error: string | null }>(a: A): A =>
-  a.status === 'pending' ? { ...a, status: a.summary ? 'done' : 'none', error: null } : a;
 
 export function applyImport(deps: TransferDeps, file: ExportFile, strategy: DuplicateStrategy): ImportResult {
   const { store } = deps;
@@ -235,8 +235,8 @@ export function applyImport(deps: TransferDeps, file: ExportFile, strategy: Dupl
         const { avatarDataUrl, ...repoFields } = imported;
         // merge оставляет локальный аватар — тогда файл из импорта не должен его перезаписывать.
         const keepLocalAvatar = local && strategy === 'merge' && local.avatarPath;
-        const avatarFromFile = keepLocalAvatar ? null : writeAvatarFromDataUrl(deps.dataDir, avatarDataUrl, imported.github.ownerLogin);
-        const candidate: Repo = { ...repoFields, key, avatarPath: avatarFromFile ?? null, analysis: settle(imported.analysis) };
+        const avatarFromFile = keepLocalAvatar ? null : writeAvatarFromDataUrl(deps.dataDir, ops, avatarDataUrl, imported.github.ownerLogin);
+        const candidate: Repo = { ...repoFields, key, avatarPath: avatarFromFile ?? null, analysis: settlePendingAnalysis(imported.analysis) };
 
         if (!local) {
           const existingId = store.getById(candidate.id);
@@ -300,7 +300,7 @@ function importTool(deps: TransferDeps, imported: ImportedTool, strategy: Duplic
     key,
     domain,
     source: { ...imported.source, iconPath: null, imagePath: null },
-    analysis: settle(imported.analysis),
+    analysis: settlePendingAnalysis(imported.analysis),
     user: { ...imported.user, imagePath: null },
   };
   const w = (kind: ToolImageKind, dataUrl: string | null | undefined) => writeToolImage(dataDir, ops, id, kind, dataUrl);

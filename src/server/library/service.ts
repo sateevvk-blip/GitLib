@@ -1,11 +1,12 @@
 import type { AnalysisData, ChatMessage, ChatReply, Collection, Facets, LibraryQuery, Repo, RepoSummary, UserPatch } from '../../shared/types.js';
 import { normalizeRepoInput } from '../../shared/normalize.js';
 import { computeFacets, searchRepos } from '../../shared/search.js';
-import { applyAnalysis, applyGithubRefresh, applyUserPatch, emptyAnalysis, newUserData } from '../../shared/merge.js';
+import { applyAnalysis, applyGithubRefresh, applyUserPatch, emptyAnalysis, newUserData, settlePendingAnalysis } from '../../shared/merge.js';
 import type { LibraryStore } from './store.js';
 import type { SettingsStore } from '../settings.js';
 import { downloadAvatar, fetchRepository } from '../github/client.js';
 import { analyzeRepo, chatAboutRepo, selectChatFiles } from '../ai/analyzer.js';
+import { assertCanChat } from '../ai/llm.js';
 import { rankFiles, readableEntries, type ChatContext } from '../ai/context.js';
 import { RepoContents, githubContentSource, type ContentSource } from './contents.js';
 import { config } from '../config.js';
@@ -195,13 +196,7 @@ export class LibraryService {
    */
   async chat(id: string, history: ChatMessage[]): Promise<ChatReply> {
     const repo = this.get(id);
-    if (!this.settings.isLlmConfigured()) {
-      throw new ValidationError('LLM не настроена. Укажите Base URL и модель в настройках.');
-    }
-    const last = history[history.length - 1];
-    if (!last || last.role !== 'user' || !last.content.trim()) {
-      throw new ValidationError('Последнее сообщение должно быть вопросом пользователя');
-    }
+    assertCanChat(this.settings.isLlmConfigured(), history);
     const settings = this.settings.get();
     const ctx = await this.collectChatContext(repo, history);
     const answer = await this.ai.chatAboutRepo(repo, settings, history, ctx);
@@ -237,7 +232,7 @@ export class LibraryService {
       this.log.info(`Возобновлено ${pending.length} AI-анализов`);
     } else {
       for (const r of pending) {
-        this.store.updateAnalysis(r.id, { ...r.analysis, status: r.analysis.summary ? 'done' : 'none', error: null });
+        this.store.updateAnalysis(r.id, settlePendingAnalysis(r.analysis));
       }
     }
   }

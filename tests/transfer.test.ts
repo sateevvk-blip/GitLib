@@ -132,6 +132,28 @@ describe('импорт', () => {
     }
   });
 
+  it('сбой импорта не заменяет аватар и не оставляет временных файлов', () => {
+    const source = seeded();
+    fs.mkdirSync(path.join(source.dataDir, 'avatars'), { recursive: true });
+    fs.writeFileSync(path.join(source.dataDir, 'avatars', 'octo.png'), Buffer.from([1, 2, 3]));
+    source.store.update({ ...source.a, avatarPath: 'avatars/octo.png' });
+    const file = exportFrom(source);
+
+    const target = seeded();
+    const dir = path.join(target.dataDir, 'avatars');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'octo.png'), Buffer.from([9, 9]));
+    const real = target.store.update.bind(target.store);
+    // Падаем на записи с аватаром — уже после того, как импорт подготовил её файл.
+    target.store.update = (r) => {
+      if (r.key === 'octo/alpha') throw new Error('сбой');
+      return real(r);
+    };
+    expect(() => applyImport({ store: target.store, toolsStore: target.toolsStore, dataDir: target.dataDir, appVersion: '1.0.0' }, file, 'replace')).toThrow('сбой');
+    expect([...fs.readFileSync(path.join(dir, 'octo.png'))]).toEqual([9, 9]);
+    expect(fs.readdirSync(dir)).toEqual(['octo.png']);
+  });
+
   it('стратегия merge: заметки объединяются, темы — объединение, избранное сохраняется', () => {
     const source = seeded();
     const file = exportFrom(source);
