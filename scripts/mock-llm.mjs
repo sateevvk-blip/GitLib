@@ -52,6 +52,39 @@ const server = http.createServer((req, res) => {
       } catch {
         /* ignore */
       }
+      const system = messages.find((m) => m.role === 'system')?.content ?? '';
+      const lastUser = [...messages].reverse().find((m) => m.role === 'user')?.content ?? '';
+      const reply200 = (content) => {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ id: 'chatcmpl-mock', object: 'chat.completion', model: 'mock-1', choices: [{ index: 0, message: { role: 'assistant', content }, finish_reason: 'stop' }] }));
+      };
+      // Подбор инструментов: в запросе блок каталога — возвращаем первые два id.
+      if (lastUser.includes('<<<КАТАЛОГ')) {
+        const ids = [...lastUser.matchAll(/^id:\s*(\S+)/gm)].map((x) => x[1]).slice(0, 2);
+        reply200(JSON.stringify({ matches: ids.map((id, i) => ({ id, reason: 'Мок: подходит под описанную задачу.', fit: i === 0 ? 'high' : 'medium' })), comment: 'Мок-подбор: взяты первые записи каталога.' }));
+        return;
+      }
+      // Анализ инструмента: блок страницы и схема с limitations в системном промпте.
+      if (lastUser.includes('<<<СТРАНИЦА') && /limitations/.test(system) && messages.length === 2) {
+        const body = (lastUser.split('<<<СТРАНИЦА\n')[1] ?? '').split('\nСТРАНИЦА>>>')[0].split('\n\n').slice(1).join('\n\n');
+        const quote = body.replace(/\s+/g, ' ').trim().slice(0, 40);
+        reply200(
+          JSON.stringify({
+            summary: 'Мок-описание инструмента: решает прикладную задачу разработчика по данным страницы.',
+            purpose: 'Демонстрация анализа инструмента мок-моделью',
+            audience: 'Разработчики и дизайнеры',
+            features: ['Первая возможность из мока', 'Вторая возможность из мока'],
+            useCases: ['Быстрый старт задачи', 'Замена самописного решения', 'Изучение подхода авторов'],
+            limitations: [
+              { text: 'Ограничение с настоящей цитатой (должно сохраниться)', evidence: quote },
+              { text: 'Ограничение с выдуманной цитатой (должно отсеяться)', evidence: 'такой фразы нет на странице вообще никогда' },
+            ],
+            tags: ['mock', 'developer-tools'],
+            category: 'Другое',
+          }),
+        );
+        return;
+      }
       if (selectFiles !== null) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ id: 'chatcmpl-mock', object: 'chat.completion', model: 'mock-1', choices: [{ index: 0, message: { role: 'assistant', content: JSON.stringify({ files: selectFiles }) }, finish_reason: 'stop' }] }));
