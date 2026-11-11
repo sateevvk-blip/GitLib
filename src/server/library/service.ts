@@ -94,6 +94,9 @@ export class LibraryService {
       }
     }
     const avatarPath = await this.github.downloadAvatar(fetched.github.ownerAvatarUrl, fetched.github.ownerLogin);
+    // Пока шли запросы к GitHub, тот же репозиторий могли добавить ещё раз (двойной клик).
+    const added = this.store.getByKey(canonicalKey) ?? this.store.getByKey(ref.key);
+    if (added) throw new DuplicateError(`«${added.fullName}» уже есть в библиотеке`, added.id);
     const now = new Date().toISOString();
     const llmConfigured = this.settings.isLlmConfigured();
     const repo: Repo = {
@@ -125,7 +128,8 @@ export class LibraryService {
       }
     }
     const avatarPath = await this.github.downloadAvatar(fetched.github.ownerAvatarUrl, fetched.github.ownerLogin);
-    const updated = applyGithubRefresh(repo, fetched.github, avatarPath, fetched.canonical);
+    // Перечитать после ожидания сети: иначе затрутся заметки и анализ, изменённые за это время.
+    const updated = applyGithubRefresh(this.get(id), fetched.github, avatarPath, fetched.canonical);
     this.store.update(updated);
     this.log.info(`Обновлён ${updated.fullName}`);
     return updated;
@@ -255,7 +259,12 @@ export class LibraryService {
         const id = this.queue.shift()!;
         this.queued.delete(id);
         if (!this.store.getById(id)) continue;
-        await this.runAnalysis(id);
+        try {
+          await this.runAnalysis(id);
+        } catch (e) {
+          // Запись удалили, пока шёл анализ: без catch отказ промиса без обработчика роняет процесс.
+          this.log.warn(`AI-анализ пропущен (${id}): ${e instanceof Error ? e.message : String(e)}`);
+        }
       }
     } finally {
       this.running = false;

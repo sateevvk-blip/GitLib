@@ -13,6 +13,8 @@ import { registerSettingsRoutes } from './routes/settings.js';
 import { registerTransferRoutes } from './routes/transfer.js';
 import { config } from './config.js';
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
 export interface AppOptions {
   dataDir: string;
   dbPath: string;
@@ -69,6 +71,17 @@ export function buildApp(opts: AppOptions): AppContext {
         error: (m) => app.log.error(m),
       },
     });
+
+  // Защита от DNS rebinding: чужая страница, чьё имя указывает на 127.0.0.1, приходит с чужим Host.
+  // При явном GITLIB_HOST (доступ из сети) проверка не включается — это выбор владельца, см. README.
+  if (LOOPBACK_HOSTS.has(config.host)) {
+    app.addHook('onRequest', async (req, reply) => {
+      const host = (req.headers.host ?? '').replace(/:\d+$/, '').toLowerCase();
+      if (!LOOPBACK_HOSTS.has(host)) {
+        return reply.status(403).send({ error: 'GitLib доступен только с этого компьютера (localhost)', code: 'forbidden_host' });
+      }
+    });
+  }
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof AppError) {
