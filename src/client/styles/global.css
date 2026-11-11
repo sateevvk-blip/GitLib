@@ -143,10 +143,12 @@ a {
   color: var(--cobalt-ink);
   text-decoration: none;
 }
-a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-style: dashed;
+@media (hover: hover) {
+  a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    text-decoration-style: dashed;
+  }
 }
 
 button,
@@ -257,8 +259,10 @@ h3 {
   font-weight: 600;
   letter-spacing: -0.03em;
 }
-.wordmark:hover {
-  text-decoration: none;
+@media (hover: hover) {
+  .wordmark:hover {
+    text-decoration: none;
+  }
 }
 .wordmark-cube {
   width: 24px;
@@ -266,8 +270,10 @@ h3 {
   display: block;
   transition: transform var(--dur-base) var(--ease-spring);
 }
-.wordmark:hover .wordmark-cube {
-  transform: rotate(-12deg) translateY(-2px);
+@media (hover: hover) {
+  .wordmark:hover .wordmark-cube {
+    transform: rotate(-12deg) translateY(-2px);
+  }
 }
 .wordmark-sub {
   display: flex;
@@ -321,9 +327,11 @@ h3 {
   opacity: 0;
   transition: opacity var(--dur-quick) var(--ease-out);
 }
-.topnav a:hover {
-  text-decoration: none;
-  color: var(--ink);
+@media (hover: hover) {
+  .topnav a:hover {
+    text-decoration: none;
+    color: var(--ink);
+  }
 }
 .topnav a.active {
   color: var(--ink);
@@ -466,9 +474,11 @@ h3 {
   color: var(--ink-3);
   cursor: pointer;
 }
-.search .search-clear:hover {
-  background: var(--paper-3);
-  color: var(--ink);
+@media (hover: hover) {
+  .search .search-clear:hover {
+    background: var(--paper-3);
+    color: var(--ink);
+  }
 }
 .search .search-clear svg {
   position: static;
@@ -498,13 +508,17 @@ h3 {
   border-color: var(--cobalt-line);
   box-shadow: 2px 2px 0 var(--cobalt-line);
 }
-.btn:hover {
-  background: var(--paper-2);
-  transform: translate(-1px, -1px);
-  box-shadow: 3px 3px 0 var(--ink);
+@media (hover: hover) {
+  .btn:hover {
+    background: var(--paper-2);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 var(--ink);
+  }
 }
-:root[data-theme='dark'] .btn:hover {
-  box-shadow: 3px 3px 0 var(--cobalt-line);
+@media (hover: hover) {
+  :root[data-theme='dark'] .btn:hover {
+    box-shadow: 3px 3px 0 var(--cobalt-line);
+  }
 }
 .btn:active {
   transform: translate(1px, 1px);
@@ -526,41 +540,54 @@ h3 {
   border-color: var(--ink);
   color: #fff;
 }
-.btn-primary:hover {
-  background: var(--cobalt-ink);
-  color: #fff;
+@media (hover: hover) {
+  .btn-primary:hover {
+    background: var(--cobalt-ink);
+    color: #fff;
+  }
 }
 :root[data-theme='dark'] .btn-primary {
   color: #0d1a3e;
   border-color: var(--cobalt);
 }
-:root[data-theme='dark'] .btn-primary:hover {
-  color: #0d1a3e;
+@media (hover: hover) {
+  :root[data-theme='dark'] .btn-primary:hover {
+    color: #0d1a3e;
+  }
 }
 .btn-ghost {
   background: transparent;
   border-color: transparent;
   box-shadow: none;
 }
-.btn-ghost:hover {
-  background: var(--paper-3);
-  border-color: transparent;
-  box-shadow: none;
-  transform: none;
+@media (hover: hover) {
+  .btn-ghost:hover {
+    background: var(--paper-3);
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+  }
 }
 .btn-ghost:active {
   transform: translateY(1px);
 }
-:root[data-theme='dark'] .btn-ghost,
-:root[data-theme='dark'] .btn-ghost:hover {
+:root[data-theme='dark'] .btn-ghost {
   box-shadow: none;
   border-color: transparent;
+}
+@media (hover: hover) {
+  :root[data-theme='dark'] .btn-ghost:hover {
+    box-shadow: none;
+    border-color: transparent;
+  }
 }
 .btn-danger {
   color: var(--danger);
 }
-.btn-danger:hover {
-  background: var(--danger-soft);
+@media (hover: hover) {
+  .btn-danger:hover {
+    background: var(--danger-soft);
+  }
 }
 .btn-sm {
   height: 32px;
@@ -669,11 +696,13 @@ h3 {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chip:hover {
-  border-color: var(--cobalt);
-  color: var(--cobalt-ink);
-  transform: translate(-1px, -1px);
-  box-shadow: 2px 2px 0 var(--cobalt-line);
+@media (hover: hover) {
+  .chip:hover {
+    border-color: var(--cobalt);
+    color: var(--cobalt-ink);
+    transform: translate(-1px, -1px);
+    box-shadow: 2px 2px 0 var(--cobalt-line);
+  }
 }
 .chip.is-active {
   background: var(--cobalt);
@@ -685,11 +714,15 @@ h3 {
   color: #0d1a3e;
   box-shadow: 2px 2px 0 var(--cobalt-line);
 }
-.chip.is-active:hover {
-  color: #fff;
+@media (hover: hover) {
+  .chip.is-active:hover {
+    color: #fff;
+  }
 }
-:root[data-theme='dark'] .chip.is-active:hover {
-  color: #0d1a3e;
+@media (hover: hover) {
+  :root[data-theme='dark'] .chip.is-active:hover {
+    color: #0d1a3e;
+  }
 }
 .chip.is-user {
   border-style: solid;
@@ -703,9 +736,11 @@ h3 {
 .chip.is-static {
   cursor: default;
 }
-.chip.is-static:hover {
-  transform: none;
-  box-shadow: none;
+@media (hover: hover) {
+  .chip.is-static:hover {
+    transform: none;
+    box-shadow: none;
+  }
 }
 .chip .chip-x {
   display: inline-flex;
@@ -717,8 +752,10 @@ h3 {
   cursor: pointer;
   opacity: 0.6;
 }
-.chip .chip-x:hover {
-  opacity: 1;
+@media (hover: hover) {
+  .chip .chip-x:hover {
+    opacity: 1;
+  }
 }
 .chip-count {
   color: var(--ink-3);
@@ -801,8 +838,10 @@ h3 {
   cursor: pointer;
   transition: background var(--dur-quick) var(--ease-out), color var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
-.status-select button:hover {
-  color: var(--ink);
+@media (hover: hover) {
+  .status-select button:hover {
+    color: var(--ink);
+  }
 }
 .status-select button.is-active {
   background: var(--paper-2);
@@ -916,9 +955,11 @@ h3 {
   transform: scaleY(0.3);
   transition: opacity var(--dur-quick) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
-.rail-item:hover {
-  background: var(--paper-3);
-  color: var(--ink);
+@media (hover: hover) {
+  .rail-item:hover {
+    background: var(--paper-3);
+    color: var(--ink);
+  }
 }
 .rail-item.is-active {
   background: var(--cobalt-soft);
@@ -1126,16 +1167,20 @@ h3 {
   border-right: 1.5px solid var(--cobalt);
   transform: translate(-4px, -4px);
 }
-.card:hover {
-  text-decoration: none;
-  border-color: var(--cobalt);
-  transform: translate(-2px, -2px);
-  box-shadow: 5px 5px 0 var(--cobalt-line);
+@media (hover: hover) {
+  .card:hover {
+    text-decoration: none;
+    border-color: var(--cobalt);
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 var(--cobalt-line);
+  }
 }
-.card:hover::before,
-.card:hover::after {
-  opacity: 1;
-  transform: translate(0, 0);
+@media (hover: hover) {
+  .card:hover::before,
+  .card:hover::after {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
 }
 .card:focus-visible {
   outline: 2px dashed var(--cobalt);
@@ -1186,8 +1231,10 @@ h3 {
   display: inline-block;
   max-width: 100%;
 }
-.card:hover .card-name {
-  background-size: 100% 1.5px;
+@media (hover: hover) {
+  .card:hover .card-name {
+    background-size: 100% 1.5px;
+  }
 }
 .card-fav {
   flex: none;
@@ -1204,9 +1251,11 @@ h3 {
   margin: -6px -6px 0 0;
   transition: transform var(--dur-base) var(--ease-spring), color var(--dur-quick) var(--ease-out);
 }
-.card-fav:hover {
-  color: var(--coral-ink);
-  transform: scale(1.15);
+@media (hover: hover) {
+  .card-fav:hover {
+    color: var(--coral-ink);
+    transform: scale(1.15);
+  }
 }
 .card-fav.is-on {
   color: var(--coral-ink);
@@ -1245,6 +1294,8 @@ h3 {
 .card-meta {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
   align-items: center;
   justify-content: space-between;
   gap: 4px 10px;
@@ -1767,8 +1818,10 @@ h3 {
   color: var(--cobalt-ink);
   cursor: pointer;
 }
-.add-tool-toggle:hover {
-  text-decoration: underline;
+@media (hover: hover) {
+  .add-tool-toggle:hover {
+    text-decoration: underline;
+  }
 }
 .add-tool-toggle:focus-visible {
   outline: 2px dashed var(--cobalt);
@@ -2002,15 +2055,19 @@ h3 {
   color: var(--ink-3);
   margin-bottom: 18px;
 }
-.back-link:hover {
-  color: var(--cobalt-ink);
-  text-decoration: none;
+@media (hover: hover) {
+  .back-link:hover {
+    color: var(--cobalt-ink);
+    text-decoration: none;
+  }
 }
 .back-link svg {
   transition: transform var(--dur-quick) var(--ease-out);
 }
-.back-link:hover svg {
-  transform: translateX(-3px);
+@media (hover: hover) {
+  .back-link:hover svg {
+    transform: translateX(-3px);
+  }
 }
 
 .repo-layout {
@@ -2182,8 +2239,10 @@ h3 {
   height: 30px;
   color: var(--ink-2);
 }
-.notes-tool:hover {
-  color: var(--cobalt);
+@media (hover: hover) {
+  .notes-tool:hover {
+    color: var(--cobalt);
+  }
 }
 .notes-tool svg {
   width: 15px;
@@ -2206,10 +2265,15 @@ h3 {
   outline: none;
   transition: border-color var(--dur-quick) var(--ease-out), background var(--dur-quick) var(--ease-out);
 }
-.notes-preview:hover,
 .notes-preview:focus-visible {
   border-color: var(--line-strong);
   background: var(--paper-3);
+}
+@media (hover: hover) {
+  .notes-preview:hover {
+    border-color: var(--line-strong);
+    background: var(--paper-3);
+  }
 }
 .notes-preview .prose > :last-child {
   margin-bottom: 0;
@@ -2368,8 +2432,10 @@ h3 {
   cursor: pointer;
   font-size: 14px;
 }
-.collection-list label:hover {
-  background: var(--paper-3);
+@media (hover: hover) {
+  .collection-list label:hover {
+    background: var(--paper-3);
+  }
 }
 .collection-list input {
   accent-color: var(--cobalt);
@@ -2562,6 +2628,15 @@ h3 {
   color: var(--ink-2);
   font-size: 14px;
 }
+.settings-section,
+.form-grid > .field,
+.settings-section .field-hint {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rail-chips .input {
+  font-size: 13px;
+}
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2604,6 +2679,8 @@ h3 {
   font-size: 13px;
 }
 .code-path {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-family: var(--font-mono);
   font-size: 13px;
   background: var(--paper-3);
@@ -2964,8 +3041,10 @@ h3 {
   text-underline-offset: 2px;
   overflow-wrap: anywhere;
 }
-.chat-sources a:hover {
-  color: var(--cobalt-ink);
+@media (hover: hover) {
+  .chat-sources a:hover {
+    color: var(--cobalt-ink);
+  }
 }
 .chat-notice-line {
   font-size: 12px;
@@ -2993,9 +3072,11 @@ h3 {
   font-family: var(--font-ui);
   font-size: 12.5px;
 }
-.chat-chip:hover:not(:disabled) {
-  border-color: var(--ink);
-  background: var(--lime-soft);
+@media (hover: hover) {
+  .chat-chip:hover:not(:disabled) {
+    border-color: var(--ink);
+    background: var(--lime-soft);
+  }
 }
 .chat-chip:disabled {
   opacity: 0.5;
@@ -3636,10 +3717,12 @@ h3 {
   color: var(--ink);
   transition: border-color var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out), box-shadow var(--dur-quick) var(--ease-out);
 }
-.mascot-card:hover {
-  border-color: var(--cobalt-line);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-1);
+@media (hover: hover) {
+  .mascot-card:hover {
+    border-color: var(--cobalt-line);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-1);
+  }
 }
 .mascot-card.is-active {
   border-color: var(--cobalt);
@@ -3745,8 +3828,10 @@ h3 {
   align-items: center;
   justify-content: center;
   background: rgba(10, 12, 16, 0.45);
-  backdrop-filter: blur(3px);
   animation: fade-in var(--dur-base) var(--ease-out);
+}
+.confirm-box:focus {
+  outline: none;
 }
 .confirm-box {
   width: min(440px, calc(100vw - 40px));
@@ -3969,8 +4054,29 @@ h3 {
   .confirm.add-tool-overlay {
     --add-tool-top: 16px;
   }
-  .empty-hero {
-    margin-bottom: 120px; /* место под маскота, чтобы он не закрывал поле адреса */
+  /* Пустое состояние несёт своего маскота — маскот дока не должен закрывать поле адреса, кнопки и заголовок. */
+  body:has(.empty) .mascot-dock {
+    display: none;
+  }
+  /* Реплика не перехватывает касания: страница под ней остаётся доступной (ссылка в реплике — по-прежнему нажимается). */
+  .mascot-bubble {
+    pointer-events: none;
+  }
+  .mascot-bubble-link {
+    pointer-events: auto;
+  }
+  /* 16 px — иначе iOS увеличивает страницу при фокусе. */
+  .search input,
+  .input,
+  .textarea,
+  .select,
+  .chat-input,
+  .add-form .input,
+  .topics-add .input,
+  .secret-row .input,
+  .notes textarea,
+  .rail-chips .input {
+    font-size: 16px;
   }
 }
 @media (max-width: 360px) {
@@ -4139,9 +4245,11 @@ h3 {
   cursor: pointer;
   transition: background var(--dur-quick) var(--ease-out), transform var(--dur-quick) var(--ease-out);
 }
-.intro-skip:hover {
-  background: #fff;
-  transform: translate(-1px, -1px);
+@media (hover: hover) {
+  .intro-skip:hover {
+    background: #fff;
+    transform: translate(-1px, -1px);
+  }
 }
 .intro-skip:focus-visible {
   outline: 2px solid #2b49b8;

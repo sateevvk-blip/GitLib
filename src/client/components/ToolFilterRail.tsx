@@ -101,7 +101,7 @@ export function ToolFilterRail({ facets }: Props) {
               <div className="rail-chips" style={{ marginBottom: 8 }}>
                 <input
                   className="input"
-                  style={{ minHeight: 30, padding: '2px 10px', fontSize: 13 }}
+                  style={{ minHeight: 30, padding: '2px 10px' }}
                   placeholder="Найти тег…"
                   aria-label="Найти тег"
                   value={tagFilter}

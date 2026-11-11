@@ -90,7 +90,7 @@ export function EditableField({ label, kind, value, aiValue, overridden, disable
 
   const showValue = (v: FieldValue | null, withItems: boolean, limit?: number) => {
     if (Array.isArray(v)) {
-      if (v.length === 0) return <p className="field-empty">не заполнено</p>;
+      if (v.length === 0) return <p className="field-empty">{overridden && v === value ? 'пунктов нет' : 'не заполнено'}</p>;
       const Tag = ordered ? 'ol' : 'ul';
       const shown = limit && !expanded && v.length > limit + 1 ? v.slice(0, limit) : v;
       return (

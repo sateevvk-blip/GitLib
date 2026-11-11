@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import type { ToolSummary } from '../../shared/types.js';
-import { toolCategory, toolDescription, toolField, toolTags, toolTitle } from '../../shared/tools.js';
+import { isOverridden, toolCategory, toolDescription, toolField, toolTags, toolTitle } from '../../shared/tools.js';
 import { fold } from '../../shared/search.js';
 import { Avatar } from './Avatar';
 
@@ -77,7 +77,7 @@ export function ToolCard({ tool, index = 0, activeTags, onToggleFavorite, onTagC
         </button>
       </div>
 
-      <p className={`card-desc tool-desc ${analysis.status === 'done' && toolField(tool, 'summary') ? 'is-ai' : ''} ${!text ? 'is-none' : ''}`}>
+      <p className={`card-desc tool-desc ${!isOverridden(tool, 'summary') && analysis.status === 'done' && toolField(tool, 'summary') ? 'is-ai' : ''} ${!text ? 'is-none' : ''}`}>
         {text ?? 'Описание отсутствует'}
       </p>
 

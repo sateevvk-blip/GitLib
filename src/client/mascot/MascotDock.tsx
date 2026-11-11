@@ -120,7 +120,7 @@ export function MascotDock() {
     }
   };
 
-  const title = chat.target ? (chatOpen ? 'Закрыть чат' : `Спросить ${character.name} про ${chatLabel(chat.target)}`) : `${character.name} — твой напарник`;
+  const title = chat.target ? (chatOpen ? 'Закрыть чат' : `Спросить ${character.nameAcc} про «${chatLabel(chat.target)}»`) : `${character.name} — твой напарник`;
 
   return (
     <div className="mascot-dock">

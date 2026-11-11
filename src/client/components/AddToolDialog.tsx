@@ -6,6 +6,7 @@ import { toolTitle } from '../../shared/tools.js';
 import { ApiError, type ManualTool } from '../api/client';
 import { useAddRepo, useAddTool } from '../api/hooks';
 import { cssDuration } from '../lib/motion';
+import { FOCUSABLE } from './Confirm';
 import { useOnline } from '../lib/online';
 import { toast } from '../lib/toast';
 import { hold, phrases, react, release } from '../mascot/store';
@@ -232,7 +233,6 @@ export function AddToolForm({ autoFocus, onDone, onBusyChange }: Props) {
   );
 }
 
-const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
 export function AddToolDialog({ onClose }: { onClose: () => void }) {
   const boxRef = useRef<HTMLDivElement>(null);

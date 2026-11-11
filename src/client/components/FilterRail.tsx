@@ -139,7 +139,7 @@ export function FilterRail({ facets, collections }: Props) {
             <div className="rail-chips" style={{ marginBottom: 8 }}>
               <input
                 className="input"
-                style={{ minHeight: 30, padding: '2px 10px', fontSize: 13 }}
+                style={{ minHeight: 30, padding: '2px 10px' }}
                 placeholder="Найти тему…"
                 value={topicFilter}
                 onChange={(e) => setTopicFilter(e.target.value)}
