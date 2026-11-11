@@ -22,6 +22,14 @@ export function emptyAnalysis(): AnalysisData {
   return { status: 'none', summary: null, useCases: [], suggestedTopics: [], model: null, generatedAt: null, error: null };
 }
 
+/**
+ * «Идёт анализ» без очереди не живёт (перезапуск без LLM, запись из файла импорта):
+ * есть сводка — анализ считается сделанным, нет — не делался.
+ */
+export function settlePendingAnalysis<A extends { status: string; summary: unknown; error: string | null }>(a: A): A {
+  return a.status === 'pending' ? { ...a, status: a.summary ? 'done' : 'none', error: null } : a;
+}
+
 export function newUserData(now = new Date().toISOString()): UserData {
   return { notes: '', topics: [], status: 'inbox', favorite: false, addedAt: now, updatedAt: now };
 }

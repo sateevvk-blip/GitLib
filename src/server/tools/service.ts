@@ -5,7 +5,7 @@ import { TOOL_CATEGORIES } from '../../shared/types.js';
 import type { ChatMessage, ChatReply, Tool, ToolAnalysis, ToolFacets, ToolPatch, ToolQuery, ToolRecommendation, ToolSource, ToolSummary } from '../../shared/types.js';
 import { normalizeToolUrl } from '../../shared/tool-url.js';
 import { computeToolFacets, scoreTools, searchTools } from '../../shared/tools-search.js';
-import { applyToolAnalysis, applyToolImage, applyToolPatch, applyToolSource, emptyToolAnalysis, newToolUser } from '../../shared/merge.js';
+import { applyToolAnalysis, applyToolImage, applyToolPatch, applyToolSource, emptyToolAnalysis, newToolUser, settlePendingAnalysis } from '../../shared/merge.js';
 import type { ToolsStore } from './store.js';
 import type { SettingsStore } from '../settings.js';
 import type { ServiceDeps } from '../library/service.js';
@@ -13,6 +13,7 @@ import { JobQueue } from '../library/queue.js';
 import { fetchImage, fetchPage, type FetchOpts } from './fetcher.js';
 import { extractPage, type ExtractedPage } from './extract.js';
 import { analyzeTool, chatAboutTool, rankTools } from '../ai/tool-analyzer.js';
+import { assertCanChat } from '../ai/llm.js';
 import { config } from '../config.js';
 import { AppError, FetchError, NotFoundError, ValidationError } from '../errors.js';
 
@@ -245,7 +246,7 @@ export class ToolsService {
       this.log.info(`Возобновлено ${pending.length} AI-анализов инструментов`);
     } else {
       for (const t of pending) {
-        this.store.updateAnalysis(t.id, { ...t.analysis, status: t.analysis.summary ? 'done' : 'none', error: null });
+        this.store.updateAnalysis(t.id, settlePendingAnalysis(t.analysis));
       }
     }
   }
@@ -266,13 +267,7 @@ export class ToolsService {
   /** Чат по карточке: сеть не нужна, берётся сохранённый текст страницы. Без LLM — ошибка, как у репозиториев. */
   async chat(id: string, history: ChatMessage[]): Promise<ChatReply> {
     const tool = this.get(id);
-    if (!this.settings.isLlmConfigured()) {
-      throw new ValidationError('LLM не настроена. Укажите Base URL и модель в настройках.');
-    }
-    const last = history[history.length - 1];
-    if (!last || last.role !== 'user' || !last.content.trim()) {
-      throw new ValidationError('Последнее сообщение должно быть вопросом пользователя');
-    }
+    assertCanChat(this.settings.isLlmConfigured(), history);
     const answer = await this.ai.chatAboutTool(tool, this.settings.get(), history);
     const hasText = Boolean(tool.source.text);
     const notice = !hasText

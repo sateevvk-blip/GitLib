@@ -16,16 +16,23 @@ export function TopicsEditor({ repo, onChange, disabled }: Props) {
   const github = repo.github.topics.filter((t) => !ownLower.has(t.toLocaleLowerCase()));
   const ai = repo.analysis.suggestedTopics.filter((t) => !ownLower.has(t.toLocaleLowerCase()) && !repo.github.topics.includes(t));
 
-  const add = (t: string) => {
-    const clean = t.trim();
-    if (!clean || ownLower.has(clean.toLocaleLowerCase())) return;
-    onChange([...own, clean]);
+  // Одним onChange: несколько тем через запятую не должны затирать друг друга.
+  const add = (...topics: string[]) => {
+    const next = [...own];
+    const seen = new Set(ownLower);
+    for (const t of topics) {
+      const clean = t.trim();
+      if (!clean || seen.has(clean.toLocaleLowerCase())) continue;
+      seen.add(clean.toLocaleLowerCase());
+      next.push(clean);
+    }
+    if (next.length > own.length) onChange(next);
   };
   const remove = (t: string) => onChange(own.filter((x) => x !== t));
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    for (const part of draft.split(',')) add(part);
+    add(...draft.split(','));
     setDraft('');
   };
 

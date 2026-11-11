@@ -9,6 +9,11 @@ export function toolTitle(t: ToolSummary): string {
   return t.user.title?.trim() || t.source.title?.trim() || t.domain;
 }
 
+/** Буква-заглушка вместо картинки (по символам, а не UTF-16: эмодзи не режется пополам). */
+export function toolLetter(t: ToolSummary): string {
+  return (Array.from(toolTitle(t))[0] ?? '?').toUpperCase();
+}
+
 export function toolDescription(t: ToolSummary): string | null {
   return t.user.description?.trim() || t.source.description?.trim() || null;
 }

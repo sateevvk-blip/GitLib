@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ExternalLink, Heart, ImageOff, NotebookPen, Pencil, RefreshCw, Tags, Trash2 } from 'lucide-react';
 import { TOOL_CATEGORIES, type Tool, type ToolOverrides, type ToolPatch } from '../../shared/types.js';
 import { fold } from '../../shared/search.js';
-import { isDescriptionOverridden, toolCategory, toolDescription, toolSourceDescription, toolTitle } from '../../shared/tools.js';
+import { isDescriptionOverridden, toolCategory, toolDescription, toolLetter, toolSourceDescription, toolTitle } from '../../shared/tools.js';
 import { ApiError } from '../api/client';
 import { useAnalyzeTool, useDeleteTool, usePatchTool, useRefreshTool, useSetToolImage, useSettings, useTool, useToolFacets } from '../api/hooks';
 import { Avatar } from '../components/Avatar';
@@ -18,10 +18,9 @@ import { formatDate, formatDateTime, fullNumber, relativeDate } from '../lib/for
 import { useOnline } from '../lib/online';
 import { errorMessage, toast } from '../lib/toast';
 import { hold, phrases, react, release, setAmbient } from '../mascot/store';
-import { setChatTarget } from '../mascot/chat';
+import { CHAT_INVITED_KEY, setChatTarget } from '../mascot/chat';
 
 /** Общий с репозиториями ключ: приглашение «спроси меня» — один раз за сессию. */
-const CHAT_INVITED_KEY = 'gitlib.chat.invited';
 
 const KEY_ANALYSIS = 'tool-analysis';
 const KEY_REFRESH = 'tool-refresh';
@@ -228,7 +227,7 @@ function ImageBlock({ tool, online, onSet }: { tool: Tool; online: boolean; onSe
   const path = tool.user.imagePath ?? tool.source.imagePath;
   // Версия в адресе сбрасывает кэш при замене файла: для своей — время правки, для картинки страницы — время загрузки.
   const version = tool.user.imagePath ? tool.user.updatedAt : tool.source.fetchedAt;
-  const letter = (Array.from(toolTitle(tool).trim())[0] ?? '?').toUpperCase();
+  const letter = toolLetter(tool);
 
   const src = path ? `/${path}?v=${encodeURIComponent(version ?? '')}` : null;
   // Сбой загрузки относится к конкретному адресу: новая картинка получает новую попытку.
@@ -396,7 +395,7 @@ export function ToolPage() {
   }
 
   const title = toolTitle(tool);
-  const letter = (Array.from(title.trim())[0] ?? '?').toUpperCase();
+  const letter = toolLetter(tool);
   const llmConfigured = settings.data?.llmConfigured ?? false;
   const category = toolCategory(tool);
 

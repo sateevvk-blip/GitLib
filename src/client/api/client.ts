@@ -33,10 +33,6 @@ export class ApiError extends Error {
   }
 }
 
-export function isOfflineError(e: unknown): boolean {
-  return e instanceof ApiError && (e.code === 'offline' || e.status === 0);
-}
-
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
@@ -96,8 +92,6 @@ export interface ManualTool {
 }
 
 export const api = {
-  health: () => request<{ ok: boolean; version: string; dataDir: string; repos: number; pendingAnalyses: number }>('/api/health'),
-  connectivity: () => request<ConnectivityStatus>('/api/status/connectivity'),
 
   listRepos: (q: LibraryQuery) => request<{ items: RepoSummary[]; total: number }>(`/api/repos?${queryToParams(q)}`),
   facets: () => request<Facets>('/api/facets'),

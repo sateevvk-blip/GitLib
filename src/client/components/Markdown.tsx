@@ -56,11 +56,19 @@ function absolutize(html: string, repoUrl: string | undefined, branch: string | 
   const blobBase = repoUrl ? `${repoUrl}/blob/${branch ?? ''}/` : '';
   const rawBase = repoUrl ? `${repoUrl.replace('https://github.com/', 'https://raw.githubusercontent.com/')}/${branch ?? ''}/` : '';
   const isRelative = (u: string) => u && !/^(?:[a-z]+:|\/\/|#|mailto:)/i.test(u);
+  // DOMPurify пропускает адреса вроде `\/[`, на которых new URL бросает исключение — такой атрибут просто убираем.
+  const resolve = (el: Element, attr: string, u: string, base: string) => {
+    try {
+      el.setAttribute(attr, new URL(u, base).toString());
+    } catch {
+      el.removeAttribute(attr);
+    }
+  };
 
   for (const a of doc.querySelectorAll('a[href]')) {
     const href = a.getAttribute('href') ?? '';
     if (isRelative(href)) {
-      if (repoUrl) a.setAttribute('href', new URL(href, blobBase).toString());
+      if (repoUrl) resolve(a, 'href', href, blobBase);
       else a.removeAttribute('href'); // чужой сайт: относительный адрес некуда вести
     }
     if (a.hasAttribute('href') && !href.startsWith('#')) {
@@ -78,7 +86,7 @@ function absolutize(html: string, repoUrl: string | undefined, branch: string | 
   }
   for (const img of doc.querySelectorAll('img[src]')) {
     const src = img.getAttribute('src') ?? '';
-    if (isRelative(src)) img.setAttribute('src', new URL(src, rawBase).toString());
+    if (isRelative(src)) resolve(img, 'src', src, rawBase);
     img.setAttribute('loading', 'lazy');
   }
   if (interactiveTasks) {

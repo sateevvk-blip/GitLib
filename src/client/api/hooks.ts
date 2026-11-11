@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, SettingsPatch, Tool, ToolPatch, ToolQuery, ToolRecommendation, ToolSummary, UserPatch } from '../../shared/types.js';
+import type { ChatMessage, ChatReply, DuplicateStrategy, LibraryQuery, Repo, RepoSummary, SettingsPatch, Tool, ToolPatch, ToolQuery, ToolRecommendation, ToolSummary, UserPatch } from '../../shared/types.js';
 import { applyToolPatch } from '../../shared/merge.js';
 import type { ChatTarget } from '../mascot/chat';
 import { api, queryToParams, toolQueryToParams, type ManualTool } from './client';
@@ -14,7 +14,6 @@ export const keys = {
   toolFacets: ['tool-facets'] as const,
   collections: ['collections'] as const,
   settings: ['settings'] as const,
-  health: ['health'] as const,
 };
 
 export function useRepos(q: LibraryQuery) {
@@ -53,7 +52,6 @@ function useInvalidateTools() {
   return () => {
     void qc.invalidateQueries({ queryKey: ['tools'] });
     void qc.invalidateQueries({ queryKey: keys.toolFacets });
-    void qc.invalidateQueries({ queryKey: keys.health });
   };
 }
 
@@ -75,18 +73,15 @@ export function usePatchTool() {
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: ['tools'] });
       await qc.cancelQueries({ queryKey: keys.tool(id) });
-      const prev = qc.getQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] });
       qc.setQueriesData<{ items: ToolSummary[]; total: number }>({ queryKey: ['tools'] }, (d) =>
         d && { ...d, items: d.items.map((t) => (t.id === id && patch.favorite !== undefined ? { ...t, user: { ...t.user, favorite: patch.favorite } } : t)) },
       );
       const prevTool = qc.getQueryData<Tool>(keys.tool(id));
       if (prevTool) qc.setQueryData<Tool>(keys.tool(id), applyToolPatch(prevTool, patch));
-      return { prev, prevTool };
     },
-    onError: (_e, { id }, ctx) => {
-      ctx?.prev.forEach(([key, data]) => qc.setQueryData(key, data));
-      if (ctx?.prevTool) qc.setQueryData(keys.tool(id), ctx.prevTool);
-    },
+    // Не снимок, а перечитывание: снимок затёр бы правку, успешно сохранённую, пока шёл этот запрос.
+    // Списки перечитает onSettled.
+    onError: (_e, { id }) => void qc.invalidateQueries({ queryKey: keys.tool(id) }),
     onSuccess: (tool) => qc.setQueryData(keys.tool(tool.id), tool),
     onSettled: invalidate,
   });
@@ -148,16 +143,11 @@ export function useSettings() {
   return useQuery({ queryKey: keys.settings, queryFn: api.getSettings, staleTime: 60_000 });
 }
 
-export function useHealth() {
-  return useQuery({ queryKey: keys.health, queryFn: api.health, refetchInterval: 30_000, retry: false });
-}
-
 function useInvalidateLibrary() {
   const qc = useQueryClient();
   return () => {
     void qc.invalidateQueries({ queryKey: ['repos'] });
     void qc.invalidateQueries({ queryKey: keys.facets });
-    void qc.invalidateQueries({ queryKey: keys.health });
   };
 }
 
@@ -179,18 +169,20 @@ export function usePatchRepo() {
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: UserPatch }) => api.patchRepo(id, patch),
     onMutate: async ({ id, patch }) => {
+      await qc.cancelQueries({ queryKey: ['repos'] });
       await qc.cancelQueries({ queryKey: keys.repo(id) });
+      // Списки тоже: второй быстрый клик по сердечку в библиотеке должен видеть результат первого.
+      qc.setQueriesData<{ items: RepoSummary[]; total: number }>({ queryKey: ['repos'] }, (d) =>
+        d && { ...d, items: d.items.map((r) => (r.id === id ? { ...r, user: { ...r.user, ...patch } } : r)) },
+      );
       const prev = qc.getQueryData<Repo>(keys.repo(id));
       if (prev) qc.setQueryData<Repo>(keys.repo(id), { ...prev, user: { ...prev.user, ...patch } });
-      return { prev };
     },
-    onError: (_e, { id }, ctx) => {
-      if (ctx?.prev) qc.setQueryData(keys.repo(id), ctx.prev);
-    },
-    onSuccess: (repo) => {
-      qc.setQueryData(keys.repo(repo.id), repo);
-      invalidate();
-    },
+    // Не снимок, а перечитывание: снимок затёр бы правку, успешно сохранённую, пока шёл этот запрос.
+    // Списки перечитает onSettled.
+    onError: (_e, { id }) => void qc.invalidateQueries({ queryKey: keys.repo(id) }),
+    onSuccess: (repo) => qc.setQueryData(keys.repo(repo.id), repo),
+    onSettled: invalidate,
   });
 }
 
@@ -288,6 +280,7 @@ export function useImport() {
       invalidate();
       void qc.invalidateQueries({ queryKey: keys.collections });
       void qc.invalidateQueries({ queryKey: ['repo'] });
+      void qc.invalidateQueries({ queryKey: ['tool'] });
       void qc.invalidateQueries({ queryKey: ['tools'] });
       void qc.invalidateQueries({ queryKey: keys.toolFacets });
     },

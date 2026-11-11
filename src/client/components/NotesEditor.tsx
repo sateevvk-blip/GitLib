@@ -60,6 +60,10 @@ export function NotesEditor({ value, onSave, disabled, repoUrl, branch, placehol
   const [mode, setMode] = useState<'edit' | 'preview'>(value.trim() ? 'preview' : 'edit');
   const [state, setState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle');
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Текст, ждущий таймера автосохранения; null — ждать нечего. */
+  const unsaved = useRef<string | null>(null);
+  const save = useRef(onSave);
+  save.current = onSave;
   const lastSaved = useRef(value);
   const area = useRef<HTMLTextAreaElement>(null);
   const pendingSelection = useRef<{ start: number; end: number } | null>(null);
@@ -86,6 +90,7 @@ export function NotesEditor({ value, onSave, disabled, repoUrl, branch, placehol
   }, [draft, mode]);
 
   const flush = async (text: string) => {
+    unsaved.current = null;
     if (text === lastSaved.current) {
       setState('idle');
       return;
@@ -109,13 +114,17 @@ export function NotesEditor({ value, onSave, disabled, repoUrl, branch, placehol
   const change = (text: string) => {
     setDraft(text);
     setState('dirty');
+    unsaved.current = text;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void flush(text), 800);
   };
 
+  // Редактор закрыли раньше таймера (уход со страницы без потери фокуса) — сохраняем сразу, а не теряем текст.
   useEffect(() => {
     return () => {
       if (timer.current) clearTimeout(timer.current);
+      const text = unsaved.current;
+      if (text !== null && text !== lastSaved.current) save.current(text).catch(() => {});
     };
   }, []);
 
