@@ -32,9 +32,10 @@ import { compactNumber, formatDate, formatDateTime, fullNumber, languageColor, r
 import { toast, errorMessage } from '../lib/toast';
 import { useOnline } from '../lib/online';
 import { hold, phrases, react, release, setAmbient } from '../mascot/store';
-import { setChatTarget } from '../mascot/chat';
+import { CHAT_INVITED_KEY, setChatTarget } from '../mascot/chat';
 
-const CHAT_INVITED_KEY = 'gitlib.chat.invited';
+/** Отдельный ключ удержания: «Обновить» не снимает «думает» фонового анализа и наоборот. */
+const KEY_REFRESH = 'refresh';
 
 export function RepoPage() {
   const { id } = useParams<{ id: string }>();
@@ -70,7 +71,14 @@ export function RepoPage() {
     if (!chatId || !chatName || !chatUrl || !chatBranch) return;
     setChatTarget({ kind: 'repo', id: chatId, fullName: chatName, htmlUrl: chatUrl, branch: chatBranch, hasReadme: chatHasReadme });
   }, [chatId, chatName, chatUrl, chatBranch, chatHasReadme]);
-  useEffect(() => () => setChatTarget(null), []);
+  // Уход со страницы посреди «Обновить» не оставляет маскота «думающим»: колбэки mutate после ухода не вызываются.
+  useEffect(
+    () => () => {
+      setChatTarget(null);
+      release(KEY_REFRESH);
+    },
+    [],
+  );
 
   // Один раз за сессию подсказываем, что маскоту можно задать вопрос.
   useEffect(() => {
@@ -140,15 +148,15 @@ export function RepoPage() {
     patch.mutateAsync({ id: repo.id, patch: { notes } }).then(() => react('shy', phrases.noteSaved, 2200));
 
   const doRefresh = () => {
-    hold('thinking', 'Сверяюсь с GitHub…');
+    hold('thinking', 'Сверяюсь с GitHub…', KEY_REFRESH);
     refresh.mutate(repo.id, {
       onSuccess: () => {
-        release();
+        release(KEY_REFRESH);
         react('happy', phrases.refreshed, 3000);
         toast('success', 'Данные обновлены с GitHub');
       },
       onError: (e) => {
-        release();
+        release(KEY_REFRESH);
         react('sad', phrases.refreshFailed, 3000);
         toast('error', errorMessage(e));
       },

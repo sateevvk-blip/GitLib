@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { Star } from 'lucide-react';
 import type { ToolSummary } from '../../shared/types.js';
-import { isOverridden, toolCategory, toolDescription, toolField, toolTags, toolTitle } from '../../shared/tools.js';
+import { isOverridden, toolCategory, toolDescription, toolField, toolLetter, toolTags, toolTitle } from '../../shared/tools.js';
 import { fold } from '../../shared/search.js';
 import { Avatar } from './Avatar';
 
@@ -42,7 +42,7 @@ export function ToolCard({ tool, index = 0, activeTags, onToggleFavorite, onTagC
   const active = new Set(activeTags.map(fold));
   const { analysis, source } = tool;
   const previewPath = tool.user.imagePath ?? source.imagePath;
-  const letter = (Array.from(title.trim())[0] ?? tool.domain[0] ?? '?').toUpperCase();
+  const letter = toolLetter(tool);
 
   return (
     <Link to={`/tools/${tool.id}`} className={`card tool-card${compact ? ' tool-card-compact' : ''}`} style={{ '--i': Math.min(index, 10) } as CSSProperties}>

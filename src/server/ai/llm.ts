@@ -1,5 +1,12 @@
-import type { Settings } from '../../shared/types.js';
-import { LlmError } from '../errors.js';
+import type { ChatMessage, Settings } from '../../shared/types.js';
+import { LlmError, ValidationError } from '../errors.js';
+
+/** Общие проверки чата о репозитории и об инструменте — до любого платного вызова модели. */
+export function assertCanChat(llmConfigured: boolean, history: ChatMessage[]): void {
+  if (!llmConfigured) throw new ValidationError('LLM не настроена. Укажите Base URL и модель в настройках.');
+  const last = history[history.length - 1];
+  if (!last || last.role !== 'user' || !last.content.trim()) throw new ValidationError('Последнее сообщение должно быть вопросом пользователя');
+}
 
 /** Достаёт первый JSON-объект из ответа модели (модели любят оборачивать его в ```json). */
 export function extractJson(text: string): unknown {

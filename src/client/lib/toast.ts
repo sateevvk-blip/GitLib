@@ -5,7 +5,6 @@ export interface Toast {
   id: number;
   kind: 'info' | 'success' | 'error';
   text: string;
-  action?: { label: string; href: string };
   /** Играет анимацию ухода; удаляется из списка через --dur-quick. */
   leaving?: boolean;
 }
@@ -18,9 +17,9 @@ function emit(): void {
   for (const l of listeners) l();
 }
 
-export function toast(kind: Toast['kind'], text: string, action?: Toast['action'], ttl = kind === 'error' ? 7000 : 4000): void {
+export function toast(kind: Toast['kind'], text: string, ttl = kind === 'error' ? 7000 : 4000): void {
   const id = nextId++;
-  toasts = [...toasts, { id, kind, text, action }];
+  toasts = [...toasts, { id, kind, text }];
   emit();
   setTimeout(() => dismissToast(id), ttl);
 }

@@ -29,8 +29,11 @@ export function SettingsPage() {
     setAmbient('idle', null);
   }, []);
 
+  // Поля заполняются один раз: иначе сохранение токена GitHub откатило бы несохранённые правки LLM.
+  const filled = useRef(false);
   useEffect(() => {
-    if (settings.data) {
+    if (settings.data && !filled.current) {
+      filled.current = true;
       setLlmBaseUrl(settings.data.llmBaseUrl);
       setLlmModel(settings.data.llmModel);
       setLlmTimeoutSec(String(settings.data.llmTimeoutSec));
@@ -273,7 +276,6 @@ function DataSection({ dataDir, dbPath }: { dataDir?: string; dbPath?: string })
               (r.tools.added + r.tools.merged + r.tools.replaced + r.tools.skipped > 0
                 ? `. Инструменты: добавлено ${r.tools.added}, объединено ${r.tools.merged}, заменено ${r.tools.replaced}, пропущено ${r.tools.skipped}`
                 : ''),
-            undefined,
             9000,
           );
           react('party', phrases.imported, 4000);
