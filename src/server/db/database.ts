@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export function openDatabase(dbPath: string): DatabaseSync {
   if (dbPath !== ':memory:') fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -65,6 +65,19 @@ function migrate(db: DatabaseSync): void {
       fetched_at TEXT NOT NULL,
       PRIMARY KEY (repo_id, path)
     );
+    -- Инструменты (v3). source_text отдельно от source_json: список его не читает.
+    CREATE TABLE IF NOT EXISTS tools (
+      id TEXT PRIMARY KEY,
+      key TEXT NOT NULL UNIQUE,
+      url TEXT NOT NULL,
+      domain TEXT NOT NULL,
+      source_json TEXT NOT NULL,
+      source_text TEXT,
+      analysis_json TEXT NOT NULL,
+      user_json TEXT NOT NULL,
+      added_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_tools_added ON tools(added_at);
   `);
   const row = db.prepare('SELECT value FROM meta WHERE key = ?').get('schema_version') as { value: string } | undefined;
   if (!row) {
