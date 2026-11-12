@@ -1,6 +1,6 @@
 {
   "name": "gitlib",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "private": true,
   "description": "GitLib — персональная библиотека GitHub-репозиториев",
   "type": "module",
