@@ -20,8 +20,6 @@ import { errorMessage, toast } from '../lib/toast';
 import { hold, phrases, react, release, setAmbient } from '../mascot/store';
 import { CHAT_INVITED_KEY, setChatTarget } from '../mascot/chat';
 
-/** Общий с репозиториями ключ: приглашение «спроси меня» — один раз за сессию. */
-
 const KEY_ANALYSIS = 'tool-analysis';
 const KEY_REFRESH = 'tool-refresh';
 const KEY_IMAGE = 'tool-image';
@@ -559,7 +557,7 @@ export function ToolPage() {
               </h2>
               <span className="label">Markdown · автосохранение</span>
             </div>
-            <NotesEditor value={tool.user.notes} onSave={saveNotes} placeholder="Зачем мне этот инструмент, для какой задачи, что проверить, подводные камни… Поддерживается Markdown." />
+            <NotesEditor key={tool.id} value={tool.user.notes} onSave={saveNotes} placeholder="Зачем мне этот инструмент, для какой задачи, что проверить, подводные камни… Поддерживается Markdown." />
             <p className="tool-notes-hint">Картинки в заметках инструмента не показываются.</p>
           </section>
         </div>
