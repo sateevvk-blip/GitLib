@@ -261,7 +261,7 @@ export function RepoPage() {
               </h2>
               <span className="label">Markdown · автосохранение</span>
             </div>
-            <NotesEditor value={repo.user.notes} onSave={saveNotes} repoUrl={g.htmlUrl} branch={g.defaultBranch} />
+            <NotesEditor key={repo.id} value={repo.user.notes} onSave={saveNotes} repoUrl={g.htmlUrl} branch={g.defaultBranch} />
           </section>
 
           <section className="panel">

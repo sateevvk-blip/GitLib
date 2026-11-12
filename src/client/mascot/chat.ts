@@ -7,10 +7,10 @@ export type ChatTarget =
   | { kind: 'repo'; id: string; fullName: string; htmlUrl: string; branch: string; hasReadme: boolean }
   | { kind: 'tool'; id: string; title: string; url: string; domain: string; hasText: boolean };
 
-/** Ключ истории и ожидания. У репозитория — голый id (так лежат истории в открытых вкладках), у инструмента — с префиксом. */
 /** Подсказка «маскоту можно задать вопрос» — один раз за сессию на обе страницы записей. */
 export const CHAT_INVITED_KEY = 'gitlib.chat.invited';
 
+/** Ключ истории и ожидания. У репозитория — голый id (так лежат истории в открытых вкладках), у инструмента — с префиксом. */
 export const chatKey = (t: Pick<ChatTarget, 'kind' | 'id'>): string => (t.kind === 'repo' ? t.id : `tool:${t.id}`);
 export const chatLabel = (t: ChatTarget): string => (t.kind === 'repo' ? t.fullName : t.title);
 export const chatShortName = (t: ChatTarget): string => (t.kind === 'repo' ? (t.fullName.split('/')[1] ?? t.fullName) : t.title);
