@@ -58,7 +58,10 @@ function isNetworkError(e: unknown): boolean {
 async function githubFetch(url: string, token: string, accept?: string): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(url, { headers: headers(token, accept), signal: AbortSignal.timeout(config.githubTimeoutMs) });
+    const live = await fetch(url, { headers: headers(token, accept), signal: AbortSignal.timeout(config.githubTimeoutMs) });
+    // Тело читается здесь же: таймаут на нём — это «нет связи», а не внутренняя ошибка у вызывающего.
+    const body = await live.arrayBuffer();
+    res = new Response(body.byteLength ? body : null, { status: live.status, headers: live.headers });
   } catch (e) {
     if (isNetworkError(e)) {
       throw new GithubError('Нет связи с GitHub. Проверьте подключение к интернету.', 'offline', 503);

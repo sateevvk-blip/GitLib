@@ -38,3 +38,9 @@ describe('fetchRepository: лимит GitHub посреди загрузки', (
     expect(r.github.languages).toEqual({ Go: 1 });
   });
 });
+
+it('таймаут на чтении тела ответа GitHub → offline, а не необработанная ошибка', async () => {
+  const slowBody = { ok: true, status: 200, headers: new Headers(), arrayBuffer: async () => { throw new DOMException('timeout', 'TimeoutError'); } };
+  vi.stubGlobal('fetch', async () => slowBody);
+  await expect(fetchRepository('o', 'r', '')).rejects.toMatchObject({ code: 'offline' });
+});

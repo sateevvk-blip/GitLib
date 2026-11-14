@@ -16,8 +16,27 @@ export const keys = {
   settings: ['settings'] as const,
 };
 
+/** Когда анализ закончился, счётчики «Без AI-анализа» в фасетах устарели. */
+function useFacetsAfterAnalysis(items: Array<{ analysis: { status: string } }> | undefined, facetsKey: readonly string[]) {
+  const qc = useQueryClient();
+  const pending = items?.filter((r) => r.analysis.status === 'pending').length ?? 0;
+  const prev = useRef(pending);
+  useEffect(() => {
+    if (pending < prev.current) void qc.invalidateQueries({ queryKey: facetsKey });
+    prev.current = pending;
+  }, [pending, qc, facetsKey]);
+}
+
 export function useRepos(q: LibraryQuery) {
-  return useQuery({ queryKey: keys.repos(q), queryFn: () => api.listRepos(q), placeholderData: (prev) => prev });
+  const result = useQuery({
+    queryKey: keys.repos(q),
+    queryFn: () => api.listRepos(q),
+    placeholderData: (prev) => prev,
+    // Пока хоть одна карточка анализируется — список обновляется сам.
+    refetchInterval: (query) => (query.state.data?.items.some((r) => r.analysis.status === 'pending') ? 3000 : false),
+  });
+  useFacetsAfterAnalysis(result.data?.items, keys.facets);
+  return result;
 }
 
 export function useFacets() {
@@ -25,7 +44,6 @@ export function useFacets() {
 }
 
 export function useTools(q: ToolQuery) {
-  const qc = useQueryClient();
   const result = useQuery({
     queryKey: keys.tools(q),
     queryFn: () => api.listTools(q),
@@ -33,13 +51,7 @@ export function useTools(q: ToolQuery) {
     // Пока хоть одна карточка анализируется — список обновляется сам.
     refetchInterval: (query) => (query.state.data?.items.some((t) => t.analysis.status === 'pending') ? 3000 : false),
   });
-  // Когда анализ закончился, счётчики «Без AI-анализа» в фасетах устарели.
-  const pending = result.data?.items.filter((t) => t.analysis.status === 'pending').length ?? 0;
-  const prev = useRef(pending);
-  useEffect(() => {
-    if (pending < prev.current) void qc.invalidateQueries({ queryKey: keys.toolFacets });
-    prev.current = pending;
-  }, [pending, qc]);
+  useFacetsAfterAnalysis(result.data?.items, keys.toolFacets);
   return result;
 }
 

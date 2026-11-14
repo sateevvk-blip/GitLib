@@ -17,7 +17,7 @@ type Chat = typeof chatAboutTool;
 function setup(o: { llm?: boolean; rank?: Fake; chat?: Chat } = {}) {
   const dataDir = tempDataDir();
   const db = openDatabase(path.join(dataDir, 'gitlib.sqlite'));
-  const store = new ToolsStore(db, dataDir);
+  const store = new ToolsStore(db);
   const settings = makeSettings(dataDir, o.llm === false ? {} : { LLM_BASE_URL: 'http://llm.local/v1', LLM_MODEL: 'mock' });
   const service = new ToolsService({ store, settings, imagesDir: path.join(dataDir, 'tool-images'), ai: { ...(o.rank && { rankTools: (async (t, c) => ({ shown: c.map((x) => x.id), ...(await o.rank!(t, c)) })) as Rank }), ...(o.chat && { chatAboutTool: o.chat }) } });
   const add = (url: string, title: string, extra = {}) => {

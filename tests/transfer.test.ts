@@ -14,7 +14,7 @@ function makeStore() {
   const dataDir = tempDataDir();
   const db = openDatabase(path.join(dataDir, 'gitlib.sqlite'));
   const store = new LibraryStore(db);
-  const toolsStore = new ToolsStore(db, dataDir);
+  const toolsStore = new ToolsStore(db);
   return { store, toolsStore, dataDir, deps: { store, toolsStore, dataDir, appVersion: '1.0.0' } };
 }
 
@@ -51,12 +51,41 @@ describe('экспорт', () => {
   });
 });
 
+describe('транзакции хранилища', () => {
+  it('сбой вложенной записи откатывает только её: внешняя транзакция продолжается и фиксируется', () => {
+    const { store, col } = seeded();
+    const extra = makeRepo('octo/gamma');
+    store.transaction(() => {
+      store.insert(extra);
+      // тот же id — INSERT падает внутри вложенной транзакции insertCollection
+      expect(() => store.insertCollection({ ...col, name: 'Дубль' })).toThrow();
+    });
+    expect(store.getByKey('octo/gamma')).not.toBeNull();
+    expect(store.listCollections().map((c) => c.name)).toEqual(['Инструменты']);
+    // откат внешней транзакции убирает всё, что в ней сделано
+    expect(() => store.transaction(() => { store.delete(extra.id); throw new Error('стоп'); })).toThrow('стоп');
+    expect(store.getByKey('octo/gamma')).not.toBeNull();
+  });
+});
+
 describe('валидация импорта', () => {
   it('отклоняет чужой формат, неверную версию и битую структуру', () => {
     expect(() => parseExportFile({ foo: 1 })).toThrow(ValidationError);
     expect(() => parseExportFile({ format: EXPORT_FORMAT, version: 99, repos: [] })).toThrow(/версия/);
     expect(() => parseExportFile({ format: EXPORT_FORMAT, version: 1, repos: [{ id: 'x' }] })).toThrow(ValidationError);
     expect(() => parseExportFile('string')).toThrow(ValidationError);
+  });
+
+  it('ключ репозитория считается из owner/name, а не берётся из файла', () => {
+    const src = seeded();
+    const file = JSON.parse(JSON.stringify(buildExport({ store: src.store, toolsStore: src.toolsStore, dataDir: src.dataDir, appVersion: '1.0.0' }))) as ExportFile;
+    file.repos.find((r) => r.id === src.a.id)!.key = 'someone/else';
+    const dst = makeStore();
+    applyImport(dst.deps, parseExportFile(file), 'merge');
+    expect(dst.store.getByKey('octo/alpha')?.id).toBe(src.a.id);
+    expect(dst.store.getByKey('someone/else')).toBeNull();
+    file.repos[0]!.owner = 'bad owner';
+    expect(() => parseExportFile(file)).toThrow(ValidationError);
   });
 
   it('отклоняет файл с дубликатами внутри', () => {

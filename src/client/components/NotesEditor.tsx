@@ -97,7 +97,7 @@ export function NotesEditor({ value, onSave, disabled, repoUrl, branch, placehol
     }
     setState('saving');
     try {
-      await onSave(text);
+      await save.current(text);
       lastSaved.current = text;
       setState('saved');
       setTimeout(() => setState((s) => (s === 'saved' ? 'idle' : s)), 2000);
@@ -119,12 +119,17 @@ export function NotesEditor({ value, onSave, disabled, repoUrl, branch, placehol
     timer.current = setTimeout(() => void flush(text), 800);
   };
 
-  // Редактор закрыли раньше таймера (уход со страницы без потери фокуса) — сохраняем сразу, а не теряем текст.
+  // Редактор или вкладку закрыли раньше таймера — сохраняем сразу, а не теряем текст.
   useEffect(() => {
-    return () => {
+    const flushPending = () => {
       if (timer.current) clearTimeout(timer.current);
       const text = unsaved.current;
-      if (text !== null && text !== lastSaved.current) save.current(text).catch(() => {});
+      if (text !== null) void flush(text);
+    };
+    window.addEventListener('pagehide', flushPending);
+    return () => {
+      window.removeEventListener('pagehide', flushPending);
+      flushPending();
     };
   }, []);
 

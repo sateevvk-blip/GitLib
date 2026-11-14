@@ -168,7 +168,9 @@ export function parseExportFile(input: unknown): ExportFile {
   const data = parsed.data;
   const seen = new Set<string>();
   for (const r of data.repos) {
-    const k = r.key.toLowerCase();
+    // key из файла не читается (как у инструментов): считается из owner/name той же формулой, что при добавлении.
+    r.key = `${r.owner}/${r.name}`.toLowerCase();
+    const k = r.key;
     if (seen.has(k)) throw new ValidationError(`В файле импорта дублируется репозиторий ${r.fullName}`);
     seen.add(k);
   }

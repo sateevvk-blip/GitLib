@@ -42,7 +42,7 @@ function setup(o: Opts = {}) {
   const dbPath = path.join(dataDir, 'gitlib.sqlite');
   const db = openDatabase(dbPath);
   const store = new LibraryStore(db);
-  const toolsStore = new ToolsStore(db, dataDir);
+  const toolsStore = new ToolsStore(db);
   const settings = makeSettings(dataDir, o.llm === false ? {} : { LLM_BASE_URL: 'http://llm.local/v1', LLM_MODEL: 'mock' });
   const queue = new JobQueue();
   const imagesDir = path.join(dataDir, 'tool-images');

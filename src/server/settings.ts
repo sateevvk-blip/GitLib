@@ -34,12 +34,25 @@ export class SettingsStore {
   }
 
   private load(): void {
+    this.stored = {};
+    let raw: string;
     try {
-      const raw = fs.readFileSync(this.filePath, 'utf8');
-      const parsed = JSON.parse(raw) as Partial<Settings>;
-      this.stored = typeof parsed === 'object' && parsed ? parsed : {};
+      raw = fs.readFileSync(this.filePath, 'utf8');
     } catch {
-      this.stored = {};
+      return; // файла ещё нет
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<Settings>;
+      if (typeof parsed === 'object' && parsed) this.stored = parsed;
+    } catch {
+      // Первое же сохранение перезапишет файл — испорченный оставляем рядом, чтобы ключи можно было достать.
+      let kept = `копия сохранена: ${this.filePath}.bad`;
+      try {
+        fs.copyFileSync(this.filePath, `${this.filePath}.bad`);
+      } catch {
+        kept = 'копию сохранить не удалось';
+      }
+      console.warn(`Настройки не прочитаны (некорректный JSON), ${kept}`);
     }
   }
 

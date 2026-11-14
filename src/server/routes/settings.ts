@@ -4,7 +4,6 @@ import type { SettingsStore } from '../settings.js';
 import { probeGithub } from '../github/client.js';
 import { probeLlm } from '../ai/analyzer.js';
 import { ValidationError } from '../errors.js';
-import type { ConnectivityStatus } from '../../shared/types.js';
 
 const PatchBody = z
   .object({
@@ -23,12 +22,6 @@ export function registerSettingsRoutes(app: FastifyInstance, settings: SettingsS
     const r = PatchBody.safeParse(req.body);
     if (!r.success) throw new ValidationError(r.error.issues[0]?.message ?? 'Некорректные данные');
     return settings.update(r.data);
-  });
-
-  app.get('/api/status/connectivity', async (): Promise<ConnectivityStatus> => {
-    const s = settings.get();
-    const [github, llm] = await Promise.all([probeGithub(s.githubToken), probeLlm(s)]);
-    return { github, llm };
   });
 
   app.post('/api/settings/test/github', async () => probeGithub(settings.get().githubToken));

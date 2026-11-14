@@ -35,10 +35,20 @@ export class ApiError extends Error {
   }
 }
 
+// Вкладка закрывается: запросы, начатые в этот момент (заметка, набранная в последнюю секунду), должны дойти.
+// Модуль загружается раньше компонентов, поэтому флаг выставлен до их обработчиков pagehide.
+let leaving = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => { leaving = true; });
+  window.addEventListener('pageshow', () => { leaving = false; });
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(path, {
+      // shortcut: браузер даёт keepalive-запросам 64 КБ на всех, поэтому заметка длиннее ~20 тыс. символов при закрытии вкладки может не сохраниться; пересмотреть, если такие заметки станут обычными.
+      keepalive: leaving && typeof init.body === 'string' && init.body.length < 20_000,
       ...init,
       headers: { Accept: 'application/json', ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers ?? {}) },
     });
