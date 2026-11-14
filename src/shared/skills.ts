@@ -9,4 +9,6 @@ export interface SkillsReport {
   checkedAt: string;
   skills: SkillAudit[];
   partial: boolean;
+  /** В каталоге больше 30 навыков, взяты первые 30. */
+  truncated: boolean;
 }

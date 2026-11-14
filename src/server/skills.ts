@@ -1,65 +1,84 @@
 import { Parser } from 'htmlparser2';
-import { AppError } from './errors.js';
+import { config } from './config.js';
+import { AppError, FetchError } from './errors.js';
+import { fetchPage } from './tools/fetcher.js';
 import type { SkillAudit, SkillsReport } from '../shared/skills.js';
 
 const ORIGIN = 'https://www.skills.sh';
+// Общий срок на весь отчёт; отдельной настройки в config нет.
+const REPORT_BUDGET_MS = 25_000;
+const MAX_DEPTH = 1000;
+const PARSE_CHUNK = 16_384;
 const PROVIDERS = { 'agent-trust-hub': 'Gen Agent Trust Hub', socket: 'Socket', snyk: 'Snyk' };
 const failure = () => new AppError('Не удалось получить результаты skills.sh. Попробуйте позже.', 502, 'skills_unavailable');
 
-export function pageLinks(html: string): { href: string; text: string }[] {
+function scan(html: string): { links: { href: string; text: string }[]; tooDeep: boolean } {
   const links: { href: string; text: string }[] = [];
   let current: { href: string; text: string } | null = null;
+  let depth = 0;
   const parser = new Parser({
-    onopentag(name, attrs) { if (name === 'a') current = { href: attrs.href ?? '', text: '' }; },
+    onopentag(name, attrs) { depth++; if (name === 'a') current = { href: attrs.href ?? '', text: '' }; },
     ontext(text) { if (current) current.text += text; },
-    onclosetag(name) { if (name === 'a' && current) { links.push(current); current = null; } },
+    onclosetag(name) { depth--; if (name === 'a' && current) { links.push(current); current = null; } },
   });
-  parser.end(html);
-  return links;
+  // Как в tools/extract.ts: htmlparser2 разбирает глубокую вложенность за O(N²), поэтому порциями и с остановкой на пороге.
+  let tooDeep = false;
+  for (let i = 0; i < html.length && !tooDeep; i += PARSE_CHUNK) {
+    parser.write(html.slice(i, i + PARSE_CHUNK));
+    tooDeep = depth > MAX_DEPTH;
+  }
+  if (!tooDeep) parser.end();
+  return { links, tooDeep };
 }
 
+export const pageLinks = (html: string) => scan(html).links;
+
 export function parseChecks(html: string, skillPath: string): SkillAudit['checks'] {
-  const links = pageLinks(html);
+  const { links: found, tooDeep } = scan(html);
+  // Слишком глубокая страница не выдаётся за «чистую»: все статусы unknown.
+  const links = tooDeep ? [] : found;
   return Object.entries(PROVIDERS).map(([slug, provider]) => {
     const path = `${skillPath}/security/${slug}`;
-    const link = links.find((l) => l.href === path || l.href === `${ORIGIN}${path}` || l.href === `https://skills.sh${path}`);
-    const text = (link?.text ?? '').replace(/\s+/g, '').toLowerCase();
     const label = provider.replace(/\s+/g, '').toLowerCase();
-    const status = text === `${label}pass` ? 'pass' : text === `${label}warn` ? 'warn' : text === `${label}fail` ? 'fail' : 'unknown';
+    // SKILL.md автора может содержать ссылку с тем же href, поэтому смотрим все ссылки и берём худший распознанный статус.
+    const found = links
+      .filter((l) => l.href === path || l.href === `${ORIGIN}${path}` || l.href === `https://skills.sh${path}`)
+      .map((l) => l.text.replace(/\s+/g, '').toLowerCase())
+      .flatMap((text) => (['fail', 'warn', 'pass'] as const).filter((s) => text === `${label}${s}`));
+    const status = (['fail', 'warn', 'pass'] as const).find((s) => found.includes(s)) ?? 'unknown';
     return { provider, status, url: `${ORIGIN}${path}` };
   });
 }
 
-async function readPage(path: string, signal: AbortSignal): Promise<string | null> {
-  const res = await fetch(`${ORIGIN}${path}`, { signal, redirect: 'error', headers: { Accept: 'text/html' } });
-  if (res.status === 404) { await res.body?.cancel(); return null; }
-  if (!res.ok || !res.headers.get('content-type')?.includes('text/html')) { await res.body?.cancel(); throw failure(); }
-  const reader = res.body?.getReader();
-  if (!reader) throw failure();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      size += value.byteLength;
-      if (size > 2_000_000) { await reader.cancel(); throw failure(); }
-      chunks.push(value);
-    }
-  } finally { reader.releaseLock(); }
-  return Buffer.concat(chunks).toString('utf8');
-}
-
-export async function fetchSkillsReport(owner: string, name: string): Promise<SkillsReport> {
+export async function fetchSkillsReport(owner: string, name: string, load: typeof fetchPage = fetchPage): Promise<SkillsReport> {
   // Imported repository data must not be able to change the host or request path.
   if (![owner, name].every((part) => /^[\w.-]+$/.test(part) && part !== '.' && part !== '..')) throw failure();
   const path = `/${encodeURIComponent(owner.toLowerCase())}/${encodeURIComponent(name.toLowerCase())}`;
-  const signal = AbortSignal.timeout(25_000);
+  const deadline = Date.now() + REPORT_BUDGET_MS;
+  // null — страницы нет (404); любой другой сбой, в том числе редирект на чужой хост и исчерпанный бюджет, — исключение
+  const readPage = async (pagePath: string): Promise<string | null> => {
+    const left = deadline - Date.now();
+    if (left <= 0) throw failure();
+    try {
+      const page = await load(`${ORIGIN}${pagePath}`, {
+        maxBytes: config.toolPageMaxBytes,
+        timeoutMs: Math.min(config.toolFetchTimeoutMs, left),
+        headersTimeoutMs: config.toolFetchHeadersTimeoutMs,
+      });
+      if (!['https://www.skills.sh', 'https://skills.sh'].includes(new URL(page.finalUrl).origin)) throw failure();
+      return page.html;
+    } catch (e) {
+      if (e instanceof FetchError && e.extra?.status === 404) return null;
+      throw failure();
+    }
+  };
   try {
-    const html = await readPage(path, signal);
-    const report: SkillsReport = { checkedAt: new Date().toISOString(), skills: [], partial: false };
+    const html = await readPage(path);
+    const report: SkillsReport = { checkedAt: new Date().toISOString(), skills: [], partial: false, truncated: false };
     if (html === null) return report;
-    const paths = [...new Set(pageLinks(html).map((link) => {
+    const { links, tooDeep } = scan(html);
+    if (tooDeep) throw failure();
+    const paths = [...new Set(links.map((link) => {
       try {
         const url = new URL(link.href, ORIGIN);
         if (url.origin !== ORIGIN && url.origin !== 'https://skills.sh') return '';
@@ -69,7 +88,8 @@ export async function fetchSkillsReport(owner: string, name: string): Promise<Sk
     }).filter(Boolean))];
     // A successful but unrecognised page must not be reported as a clean audit.
     if (!paths.length) throw failure();
-    report.partial = paths.length > 30;
+    report.truncated = paths.length > 30;
+    report.partial = report.truncated;
     const selected = paths.slice(0, 30);
     let next = 0;
     await Promise.all(Array.from({ length: Math.min(4, selected.length) }, async () => {
@@ -78,7 +98,7 @@ export async function fetchSkillsReport(owner: string, name: string): Promise<Sk
         const skillPath = selected[index]!;
         const skill: SkillAudit = { name: skillPath.split('/').at(-1)!, url: `${ORIGIN}${skillPath}`, checks: [], unavailable: false };
         try {
-          const page = await readPage(skillPath, signal);
+          const page = await readPage(skillPath);
           if (!page) throw failure();
           skill.checks = parseChecks(page, skillPath);
           skill.unavailable = skill.checks.every((check) => check.status === 'unknown');

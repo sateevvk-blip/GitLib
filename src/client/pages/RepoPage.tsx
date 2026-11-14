@@ -232,13 +232,6 @@ export function RepoPage() {
           <a className="btn" href={g.htmlUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink size={16} /> GitHub
           </a>
-          <a
-            className="btn"
-            href="#skills-check"
-            title="Посмотреть результаты проверки в карточке репозитория"
-          >
-            <ExternalLink size={16} /> Проверить на skills.sh
-          </a>
           <button type="button" className="btn" onClick={doRefresh} disabled={busy || !online} title={online ? 'Заново получить данные с GitHub' : 'Нет сети'}>
             {refresh.isPending ? <span className="spinner" /> : <RefreshCw size={16} />}
             Обновить
