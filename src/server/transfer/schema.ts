@@ -56,8 +56,8 @@ const UserSchema = z
 export const ExportedRepoSchema = z
   .object({
     id: z.string().min(1),
-    owner: z.string().min(1),
-    name: z.string().min(1),
+    owner: z.string().regex(/^[^\s/]+$/),
+    name: z.string().regex(/^[^\s/]+$/),
     fullName: z.string().min(1),
     key: z.string().min(1),
     avatarPath: z.string().nullable().default(null),

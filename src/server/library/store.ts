@@ -64,14 +64,15 @@ const SUMMARY_SELECT = `SELECT id, key, owner, name, full_name, avatar_path, git
 export class LibraryStore {
   constructor(private readonly db: DatabaseSync) {}
 
+  /** SAVEPOINT, а не BEGIN: вкладывается (запись коллекции внутри импорта); самый внешний RELEASE фиксирует. */
   transaction<T>(fn: () => T): T {
-    this.db.exec('BEGIN');
+    this.db.exec('SAVEPOINT tx');
     try {
       const result = fn();
-      this.db.exec('COMMIT');
+      this.db.exec('RELEASE tx');
       return result;
     } catch (e) {
-      this.db.exec('ROLLBACK');
+      this.db.exec('ROLLBACK TO tx; RELEASE tx');
       throw e;
     }
   }
@@ -199,19 +200,24 @@ export class LibraryStore {
   }
 
   insertCollection(c: Collection): Collection {
-    this.db
-      .prepare('INSERT INTO collections (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-      .run(c.id, c.name, c.description, c.createdAt, c.updatedAt);
-    this.setCollectionRepos(c.id, c.repoIds);
-    return c;
+    // Запись и состав — вместе: сбой не оставляет пустую коллекцию.
+    return this.transaction(() => {
+      this.db
+        .prepare('INSERT INTO collections (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
+        .run(c.id, c.name, c.description, c.createdAt, c.updatedAt);
+      this.setCollectionRepos(c.id, c.repoIds);
+      return c;
+    });
   }
 
   updateCollection(c: Collection): Collection {
-    this.db
-      .prepare('UPDATE collections SET name = ?, description = ?, updated_at = ? WHERE id = ?')
-      .run(c.name, c.description, c.updatedAt, c.id);
-    this.setCollectionRepos(c.id, c.repoIds);
-    return c;
+    return this.transaction(() => {
+      this.db
+        .prepare('UPDATE collections SET name = ?, description = ?, updated_at = ? WHERE id = ?')
+        .run(c.name, c.description, c.updatedAt, c.id);
+      this.setCollectionRepos(c.id, c.repoIds);
+      return c;
+    });
   }
 
   deleteCollection(id: string): boolean {
@@ -232,13 +238,6 @@ export class LibraryStore {
     }
   }
 
-  collectionsOfRepo(repoId: string): string[] {
-    const rows = this.db
-      .prepare('SELECT collection_id FROM collection_repos WHERE repo_id = ?')
-      .all(repoId) as unknown as Array<{ collection_id: string }>;
-    return rows.map((r) => r.collection_id);
-  }
-
   // ---------- кэш содержимого для чата ----------
 
   getTreeCache(repoId: string): { tree: RepoTree; pushedAt: string | null } | null {
@@ -253,13 +252,18 @@ export class LibraryStore {
   }
 
   saveTreeCache(repoId: string, tree: RepoTree, pushedAt: string | null): void {
+    const entries = JSON.stringify(tree.entries);
     this.db
       .prepare(
         `INSERT INTO repo_trees (repo_id, tree_sha, branch, truncated, pushed_at, entries_json, fetched_at) VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(repo_id) DO UPDATE SET tree_sha = excluded.tree_sha, branch = excluded.branch, truncated = excluded.truncated,
            pushed_at = excluded.pushed_at, entries_json = excluded.entries_json, fetched_at = excluded.fetched_at`,
       )
-      .run(repoId, tree.sha, tree.branch, tree.truncated ? 1 : 0, pushedAt, JSON.stringify(tree.entries), tree.fetchedAt);
+      .run(repoId, tree.sha, tree.branch, tree.truncated ? 1 : 0, pushedAt, entries, tree.fetchedAt);
+    // Файлы, которых в новой структуре нет (удалены, переименованы), из кэша уходят — иначе он только растёт.
+    this.db
+      .prepare("DELETE FROM repo_files WHERE repo_id = ? AND path NOT IN (SELECT json_extract(value, '$.path') FROM json_each(?))")
+      .run(repoId, entries);
   }
 
   /** Содержимое файла, если в кэше лежит именно эта версия (sha блоба). */

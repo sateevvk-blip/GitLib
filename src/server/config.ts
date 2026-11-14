@@ -22,7 +22,7 @@ export const config = {
   settingsPath: path.join(dataDir, 'settings.json'),
   /** Собранный клиент (dist/client). В dev-режиме отсутствует — используется Vite. GitLib.exe распаковывает свой. */
   clientDir: process.env.GITLIB_CLIENT_DIR?.trim() ? path.resolve(process.env.GITLIB_CLIENT_DIR) : path.resolve(here, '..', 'client'),
-  appVersion: '1.2.2',
+  appVersion: '1.3.0',
   /** Максимальный размер README, сохраняемого локально (символов). */
   readmeMaxChars: 200_000,
   /** Сколько символов README отдаётся модели. */
@@ -34,8 +34,6 @@ export const config = {
   chatFileChars: 10_000,
   /** Чат: суммарный бюджет на содержимое файлов. */
   chatFilesTotalChars: 40_000,
-  /** Чат: сколько файлов модель может прочитать для одного ответа. */
-  chatMaxFiles: 8,
   /** Чат: файлы крупнее этого (байт) не читаются. */
   chatFileMaxBytes: 300_000,
   /** Чат: сохранённая структура репозитория считается свежей столько миллисекунд (если не менялся pushedAt). */

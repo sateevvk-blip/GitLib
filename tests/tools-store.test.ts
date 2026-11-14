@@ -12,7 +12,7 @@ import type { ToolAnalysis } from '../src/shared/types.js';
 function makeToolsStore() {
   const dataDir = tempDataDir();
   const db = openDatabase(path.join(dataDir, 'gitlib.sqlite'));
-  return { db, dataDir, store: new ToolsStore(db, dataDir) };
+  return { db, dataDir, store: new ToolsStore(db) };
 }
 
 describe('схема v3', () => {
@@ -33,7 +33,7 @@ describe('схема v3', () => {
     const db = openDatabase(file);
     expect((db.prepare('SELECT value FROM meta WHERE key = ?').get('schema_version') as { value: string }).value).toBe('3');
     expect(new LibraryStore(db).getById('r1')?.github.readme).toBe('README');
-    const store = new ToolsStore(db, dataDir);
+    const store = new ToolsStore(db);
     expect(store.count()).toBe(0);
     store.insert(makeTool());
     expect(store.count()).toBe(1);
@@ -92,30 +92,12 @@ describe('ToolsStore', () => {
     expect(() => store.update(makeTool())).toThrow();
   });
 
-  it('delete удаляет запись и её файлы картинок, чужие файлы не трогает', () => {
-    const { store, dataDir } = makeToolsStore();
-    fs.mkdirSync(path.join(dataDir, 'tool-images'), { recursive: true });
-    const files = ['tool-images/x-icon.png', 'tool-images/x-cover.jpg', 'tool-images/x-own.png'];
-    for (const f of files) fs.writeFileSync(path.join(dataDir, f), 'x');
-    fs.writeFileSync(path.join(dataDir, 'keep.txt'), 'x');
-    const base = makeTool();
-    const t = {
-      ...base,
-      source: makeSource({ iconPath: files[0], imagePath: files[1] }),
-      user: { ...base.user, imagePath: files[2] },
-    };
+  it('delete удаляет запись', () => {
+    const { store } = makeToolsStore();
+    const t = makeTool();
     store.insert(t);
     expect(store.delete(t.id)).toBe(true);
     expect(store.getById(t.id)).toBeNull();
-    for (const f of files) expect(fs.existsSync(path.join(dataDir, f))).toBe(false);
-    // пути, ведущие к <dataDir>/keep.txt в обход tool-images
-    const sneaky = ['keep.txt', 'tool-images/../keep.txt', path.join(dataDir, 'keep.txt')];
-    sneaky.forEach((p, i) => {
-      const other = makeTool(`https://other${i}.io`, { source: makeSource({ iconPath: p }) });
-      store.insert(other);
-      expect(store.delete(other.id)).toBe(true);
-      expect(fs.existsSync(path.join(dataDir, 'keep.txt'))).toBe(true);
-    });
     expect(store.delete('nope')).toBe(false);
   });
 });

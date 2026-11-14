@@ -4,7 +4,7 @@ import { isLocalized, isReadable, isVisible, matchesKeyword, questionKeywords, r
 import { LibraryService } from '../src/server/library/service.js';
 import { GithubError } from '../src/server/errors.js';
 import { config } from '../src/server/config.js';
-import type { ChatMessage, Repo } from '../src/shared/types.js';
+import { CHAT_MAX_FILES, type ChatMessage, type Repo } from '../src/shared/types.js';
 import { makeGithub, makeRepo, makeSettings, makeStore } from './helpers.js';
 
 function blob(path: string, size = 100, sha = `sha-${path}`): TreeEntry {
@@ -232,7 +232,7 @@ describe('контекст чата: сервис с кэшем', () => {
     });
     const r2 = await ask(failing.service, failing.repo.id);
     expect(r2.sources.length).toBeGreaterThan(0);
-    expect(r2.sources.length).toBeLessThanOrEqual(config.chatMaxFiles);
+    expect(r2.sources.length).toBeLessThanOrEqual(CHAT_MAX_FILES);
   });
 
   it('без сети: без кэша — ответ по README с примечанием, с кэшем — сохранённая структура', async () => {
@@ -259,6 +259,15 @@ describe('контекст чата: сервис с кэшем', () => {
     const r = await ask(service, repo.id);
     expect(r.sources).toEqual(['docs/commands.md']);
     expect(r.notice).toMatch(/Не удалось прочитать 1 из выбранных файлов/);
+  });
+
+  it('новая структура убирает из кэша файлы, которых в ней больше нет', async () => {
+    const { service, store, repo } = makeService();
+    await ask(service, repo.id);
+    const saved = store.getTreeCache(repo.id)!;
+    store.saveTreeCache(repo.id, { ...saved.tree, entries: saved.tree.entries.filter((e) => e.path !== 'docs/commands.md') }, saved.pushedAt);
+    expect(store.getFileCache(repo.id, 'docs/commands.md', 'sha-docs/commands.md')).toBeNull();
+    expect(store.getFileCache(repo.id, 'commands/plan.md', 'sha-commands/plan.md')).not.toBeNull();
   });
 
   it('удаление репозитория очищает кэш содержимого', async () => {

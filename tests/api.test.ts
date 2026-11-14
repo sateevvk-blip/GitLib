@@ -168,6 +168,12 @@ describe('REST API', () => {
     expect(badStrategy.statusCode).toBe(400);
   });
 
+  it('GET /skills для несуществующей записи → 404 до любых сетевых вызовов', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/repos/nope/skills' });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toMatchObject({ code: 'not_found', error: expect.any(String) });
+  });
+
   it('DELETE удаляет запись, повторный GET → 404', async () => {
     expect((await app.inject({ method: 'DELETE', url: `/api/repos/${id}` })).statusCode).toBe(204);
     expect((await app.inject({ method: 'GET', url: `/api/repos/${id}` })).statusCode).toBe(404);

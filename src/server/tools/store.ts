@@ -1,6 +1,4 @@
 import type { DatabaseSync } from 'node:sqlite';
-import fs from 'node:fs';
-import path from 'node:path';
 import type { Tool, ToolAnalysis, ToolSource, ToolSummary } from '../../shared/types.js';
 
 interface ToolRow {
@@ -37,14 +35,10 @@ function rowToTool(row: ToolRow): Tool {
 const SUMMARY_SELECT = 'SELECT id, key, url, domain, source_json, analysis_json, user_json, added_at FROM tools';
 
 /**
- * Хранилище инструментов поверх SQLite. Не знает ни о сети, ни о LLM — только данные.
- * dataDir — папка данных: относительно неё хранятся пути картинок, там же они удаляются вместе с записью.
+ * Хранилище инструментов поверх SQLite. Не знает ни о сети, ни о LLM, ни о файлах — только данные.
  */
 export class ToolsStore {
-  constructor(
-    private readonly db: DatabaseSync,
-    private readonly dataDir: string,
-  ) {}
+  constructor(private readonly db: DatabaseSync) {}
 
   listSummaries(): ToolSummary[] {
     const rows = this.db.prepare(`${SUMMARY_SELECT} ORDER BY added_at DESC`).all() as unknown as SummaryRow[];
@@ -104,24 +98,8 @@ export class ToolsStore {
     this.db.prepare('UPDATE tools SET source_json = ?, source_text = ? WHERE id = ?').run(JSON.stringify(rest), text, id);
   }
 
+  /** Только запись; файлы картинок удаляет сервис (по id, а не по путям из записи). */
   delete(id: string): boolean {
-    const tool = this.getById(id);
-    const res = this.db.prepare('DELETE FROM tools WHERE id = ?').run(id);
-    if (res.changes > 0 && tool) this.removeImages(tool);
-    return res.changes > 0;
-  }
-
-  private removeImages(tool: Tool): void {
-    const root = path.resolve(this.dataDir, 'tool-images');
-    for (const rel of [tool.source.iconPath, tool.source.imagePath, tool.user.imagePath]) {
-      if (!rel) continue;
-      const abs = path.resolve(this.dataDir, rel);
-      if (!abs.startsWith(root + path.sep)) continue; // удаляем только внутри tool-images
-      try {
-        fs.rmSync(abs, { force: true });
-      } catch {
-        // файл мог быть занят или уже удалён — запись в БД важнее
-      }
-    }
+    return this.db.prepare('DELETE FROM tools WHERE id = ?').run(id).changes > 0;
   }
 }

@@ -22,6 +22,7 @@ import type { Repo, RepoStatus } from '../../shared/types.js';
 import { STATUS_LABELS } from '../../shared/types.js';
 import { useAnalyzeRepo, useCollectionMutations, useCollections, useDeleteRepo, usePatchRepo, useRefreshRepo, useRepo, useSettings } from '../api/hooks';
 import { Avatar } from '../components/Avatar';
+import { SkillsPanel } from '../components/SkillsPanel';
 import { StatusSelect } from '../components/StatusBadge';
 import { Markdown } from '../components/Markdown';
 import { TopicsEditor } from '../components/TopicsEditor';
@@ -244,6 +245,7 @@ export function RepoPage() {
       <div className="repo-layout">
         <div className="repo-main">
           <AnalysisPanel repo={repo} llmConfigured={llmConfigured} online={online} pending={analyze.isPending} onAnalyze={doAnalyze} />
+          <SkillsPanel key={repo.id} repoId={repo.id} />
 
           <section className="panel">
             <div className="panel-head">

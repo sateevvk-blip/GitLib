@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { LibraryService } from '../library/service.js';
 import { CHAT_HISTORY_LIMIT, CHAT_MESSAGE_MAX_CHARS, REPO_STATUSES, type LibraryQuery, type SortKey } from '../../shared/types.js';
 import { ValidationError } from '../errors.js';
+import { fetchSkillsReport } from '../skills.js';
 
 const SORT_KEYS: SortKey[] = ['added', 'updated', 'stars', 'name', 'pushed'];
 
@@ -75,6 +76,11 @@ export function registerRepoRoutes(app: FastifyInstance, service: LibraryService
   });
 
   app.get<{ Params: { id: string } }>('/api/repos/:id', async (req) => service.get(req.params.id));
+
+  app.get<{ Params: { id: string } }>('/api/repos/:id/skills', async (req) => {
+    const repo = service.get(req.params.id);
+    return fetchSkillsReport(repo.owner, repo.name);
+  });
 
   app.patch<{ Params: { id: string } }>('/api/repos/:id', async (req) => {
     const patch = parseBody(PatchBody, req.body);

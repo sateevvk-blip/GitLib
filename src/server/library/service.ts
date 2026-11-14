@@ -1,4 +1,5 @@
 import type { AnalysisData, ChatMessage, ChatReply, Collection, Facets, LibraryQuery, Repo, RepoSummary, UserPatch } from '../../shared/types.js';
+import { CHAT_MAX_FILES } from '../../shared/types.js';
 import { normalizeRepoInput } from '../../shared/normalize.js';
 import { computeFacets, searchRepos } from '../../shared/search.js';
 import { applyAnalysis, applyGithubRefresh, applyUserPatch, emptyAnalysis, newUserData, settlePendingAnalysis } from '../../shared/merge.js';
@@ -209,13 +210,13 @@ export class LibraryService {
     const tree = await this.contents.getTree(repo, notes);
     if (!tree) return { tree: null, files: [], notes };
     const question = history[history.length - 1]?.content ?? '';
-    const candidates = rankFiles(readableEntries(tree), question, config.chatMaxFiles * 2);
+    const candidates = rankFiles(readableEntries(tree), question, CHAT_MAX_FILES * 2);
     let chosen: string[];
     try {
       chosen = await this.ai.selectChatFiles(repo, this.settings.get(), history, tree, candidates);
     } catch (e) {
       this.log.warn(`Чат: модель не выбрала файлы для ${repo.fullName} (${e instanceof Error ? e.message : String(e)}), беру по ключевым словам`);
-      chosen = candidates.slice(0, config.chatMaxFiles).map((c) => c.path);
+      chosen = candidates.slice(0, CHAT_MAX_FILES).map((c) => c.path);
     }
     // Модель может решить, что файлы не нужны; пара самых релевантных всё же не помешает.
     if (chosen.length === 0) chosen = candidates.slice(0, 3).map((c) => c.path);

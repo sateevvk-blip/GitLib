@@ -72,7 +72,7 @@ export function buildApp(opts: AppOptions): AppContext {
   let db: DatabaseSync | undefined;
   const getDb = (): DatabaseSync => (db ??= openDatabase(opts.dbPath));
   const store = opts.store ?? new LibraryStore(getDb());
-  const toolsStore = opts.toolsStore ?? new ToolsStore(getDb(), opts.dataDir);
+  const toolsStore = opts.toolsStore ?? new ToolsStore(getDb());
   const settings = opts.settings ?? new SettingsStore(opts.settingsPath, process.env, opts.dataDir, opts.dbPath);
   const log = {
     info: (m: string) => app.log.info(m),

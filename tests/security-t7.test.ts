@@ -38,7 +38,7 @@ function setup() {
   const dataDir = tempDataDir();
   const dbPath = path.join(dataDir, 'gitlib.sqlite');
   const db = openDatabase(dbPath);
-  const toolsStore = new ToolsStore(db, dataDir);
+  const toolsStore = new ToolsStore(db);
   const settings = makeSettings(dataDir, { LLM_BASE_URL: 'http://llm.local/v1', LLM_MODEL: 'mock', LLM_API_KEY: KEY });
   const warnings: string[] = [];
   const toolsService = new ToolsService({

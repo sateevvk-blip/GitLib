@@ -68,7 +68,3 @@ export function normalizeRepoInput(raw: string): RepoRef {
   }
   return validate(decodeURIComponent(parts[0]!), decodeURIComponent(parts[1]!));
 }
-
-export function repoKey(owner: string, name: string): string {
-  return `${owner}/${name}`.toLowerCase();
-}

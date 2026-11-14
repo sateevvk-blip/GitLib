@@ -59,6 +59,7 @@ export async function chatCompletion(settings: Settings, messages: Array<{ role:
   if (settings.llmApiKey) headers.Authorization = `Bearer ${settings.llmApiKey}`;
 
   let res: Response;
+  let raw: string;
   try {
     res = await fetch(`${settings.llmBaseUrl}/chat/completions`, {
       method: 'POST',
@@ -66,6 +67,8 @@ export async function chatCompletion(settings: Settings, messages: Array<{ role:
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(settings.llmTimeoutSec * 1000),
     });
+    // Тело читается здесь же: таймаут срабатывает и на нём (заголовки прокси отдают сразу, ответ — потом).
+    raw = await res.text();
   } catch (e) {
     const err = e as Error;
     if (err.name === 'TimeoutError' || err.name === 'AbortError') {
@@ -73,7 +76,6 @@ export async function chatCompletion(settings: Settings, messages: Array<{ role:
     }
     throw new LlmError(`Не удалось подключиться к LLM по адресу ${hideUserinfo(settings.llmBaseUrl)}`, 'llm_unreachable');
   }
-  const raw = await res.text();
   const text = settings.llmApiKey ? raw.replaceAll(settings.llmApiKey, '***') : raw;
   if (!res.ok) {
     let msg = text.slice(0, 300);
