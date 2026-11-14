@@ -22,6 +22,7 @@ import type { Repo, RepoStatus } from '../../shared/types.js';
 import { STATUS_LABELS } from '../../shared/types.js';
 import { useAnalyzeRepo, useCollectionMutations, useCollections, useDeleteRepo, usePatchRepo, useRefreshRepo, useRepo, useSettings } from '../api/hooks';
 import { Avatar } from '../components/Avatar';
+import { SkillsPanel } from '../components/SkillsPanel';
 import { StatusSelect } from '../components/StatusBadge';
 import { Markdown } from '../components/Markdown';
 import { TopicsEditor } from '../components/TopicsEditor';
@@ -231,6 +232,13 @@ export function RepoPage() {
           <a className="btn" href={g.htmlUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink size={16} /> GitHub
           </a>
+          <a
+            className="btn"
+            href="#skills-check"
+            title="Посмотреть результаты проверки в карточке репозитория"
+          >
+            <ExternalLink size={16} /> Проверить на skills.sh
+          </a>
           <button type="button" className="btn" onClick={doRefresh} disabled={busy || !online} title={online ? 'Заново получить данные с GitHub' : 'Нет сети'}>
             {refresh.isPending ? <span className="spinner" /> : <RefreshCw size={16} />}
             Обновить
@@ -244,6 +252,7 @@ export function RepoPage() {
       <div className="repo-layout">
         <div className="repo-main">
           <AnalysisPanel repo={repo} llmConfigured={llmConfigured} online={online} pending={analyze.isPending} onAnalyze={doAnalyze} />
+          <SkillsPanel key={repo.id} repoId={repo.id} />
 
           <section className="panel">
             <div className="panel-head">

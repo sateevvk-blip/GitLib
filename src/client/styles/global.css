@@ -2044,6 +2044,15 @@ h3 {
   align-items: center;
   flex-wrap: wrap;
 }
+.skills-results { display: grid; gap: 12px; }
+.skills-result { border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-wrap: anywhere; }
+.skills-result ul { list-style: none; padding: 0; margin: 10px 0 0; }
+.skills-result li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.skills-status { font-size: 12px; font-weight: 700; }
+.skills-status-pass { color: var(--ink); }
+.skills-status-warn, .skills-status-fail { color: var(--danger); }
+.skills-status-unknown { color: var(--ink-3); }
+#skills-check { scroll-margin-top: 24px; }
 .back-link {
   display: inline-flex;
   align-items: center;

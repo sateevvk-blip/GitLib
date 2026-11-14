@@ -21,6 +21,8 @@ import type {
   UserPatch,
 } from '../../shared/types.js';
 
+import type { SkillsReport } from '../../shared/skills.js';
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -96,6 +98,7 @@ export const api = {
   listRepos: (q: LibraryQuery) => request<{ items: RepoSummary[]; total: number }>(`/api/repos?${queryToParams(q)}`),
   facets: () => request<Facets>('/api/facets'),
   getRepo: (id: string) => request<Repo>(`/api/repos/${encodeURIComponent(id)}`),
+  getRepoSkills: (id: string) => request<SkillsReport>(`/api/repos/${encodeURIComponent(id)}/skills`),
   addRepo: (input: string) => request<Repo>('/api/repos', { method: 'POST', body: JSON.stringify({ input }) }),
   patchRepo: (id: string, patch: UserPatch) =>
     request<Repo>(`/api/repos/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify(patch) }),
